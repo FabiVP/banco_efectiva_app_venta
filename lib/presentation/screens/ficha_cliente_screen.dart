@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:percent_indicator/linear_percent_indicator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/cliente_model.dart';
 
-class FichaClienteScreen extends StatelessWidget {
+class FichaClienteScreen extends StatefulWidget {
   const FichaClienteScreen({super.key});
+
+  @override
+  State<FichaClienteScreen> createState() => _FichaClienteScreenState();
+}
+
+class _FichaClienteScreenState extends State<FichaClienteScreen> {
+  final Map<String, List<String>> _notasInternas = {};
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +39,7 @@ class FichaClienteScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(cliente.nombreCompleto, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white), textAlign: TextAlign.center),
                   const SizedBox(height: 4),
-                  Text('DNI: ${cliente.dni}', style: GoogleFonts.inter(fontSize: 14, color: Colors.white70)),
+                  Text('DNI: ${cliente.numeroDocumento}', style: GoogleFonts.inter(fontSize: 14, color: Colors.white70)),
                 ]),
               )),
             ),
@@ -44,81 +50,35 @@ class FichaClienteScreen extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // Badges
             Row(children: [
-              _badge(cliente.calificacion, _califColor(cliente.calificacion)),
-              const SizedBox(width: 8),
-              if (cliente.tieneRenovacion) _badge('Renovación', EfectivaColors.verdeExito),
-              const SizedBox(width: 8),
-              _badge('${cliente.creditosAnteriores} créditos', EfectivaColors.azulPrincipal),
+              if (cliente.calificacionSbs != null)
+                _badge(cliente.calificacionSbs!, _califColor(cliente.calificacionSbs!)),
+              if (cliente.esProspecto) ...[
+                const SizedBox(width: 8),
+                _badge('Prospecto', EfectivaColors.naranjaAcento),
+              ],
             ]),
             const SizedBox(height: 20),
             // Datos personales
             _section('Datos Personales', [
-              _row('Teléfono', cliente.telefono, Icons.phone),
-              _row('Email', cliente.email.isEmpty ? 'No registrado' : cliente.email, Icons.email),
-              _row('Dirección', cliente.direccion, Icons.location_on),
-              _row('Fecha Nac.', DateFormat('dd/MM/yyyy').format(cliente.fechaNacimiento), Icons.cake),
-              _row('Estado Civil', cliente.estadoCivil, Icons.favorite),
-              _row('Ocupación', cliente.ocupacion, Icons.work),
-              _row('Ingreso', 'S/ ${moneyFmt.format(cliente.ingresoMensual)}', Icons.attach_money),
+              _row('Teléfono', cliente.telefono ?? 'No registrado', Icons.phone),
+              _row('Email', cliente.email?.isEmpty == true ? 'No registrado' : cliente.email ?? '', Icons.email),
+              _row('Dirección', cliente.direccion ?? 'No registrada', Icons.location_on),
+              if (cliente.fechaNacimiento != null)
+                _row('Fecha Nac.', DateFormat('dd/MM/yyyy').format(cliente.fechaNacimiento!), Icons.cake),
+              _row('Estado Civil', cliente.estadoCivil ?? 'No registrado', Icons.favorite),
+              _row('Tipo Negocio', cliente.tipoNegocio ?? 'No registrado', Icons.work),
+              if (cliente.ingresosEstimados != null)
+                _row('Ingreso Estimado', 'S/ ${moneyFmt.format(cliente.ingresosEstimados)}', Icons.attach_money),
             ]),
             const SizedBox(height: 16),
-            // Historial crediticio
-            _section('Historial Crediticio', [
-              _row('Créditos anteriores', '${cliente.creditosAnteriores}', Icons.history),
-              _row('Monto máx. aprobado', 'S/ ${moneyFmt.format(cliente.montoMaximoAprobado)}', Icons.trending_up),
-              _row('Calificación', cliente.calificacion, Icons.star),
-              if (cliente.fechaUltimoCredito != null)
-                _row('Último crédito', DateFormat('dd/MM/yyyy').format(cliente.fechaUltimoCredito!), Icons.calendar_today),
-            ]),
-            const SizedBox(height: 16),
-            // Productos activos
-            if (cliente.productosActivos.isNotEmpty) ...[
-              Text('Productos Activos', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
-              const SizedBox(height: 10),
-              ...cliente.productosActivos.map((p) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: p.estado == 'Vigente' ? EfectivaColors.verdeExito.withValues(alpha: 0.3) : EfectivaColors.grisClaro)),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text(p.tipo, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: p.estado == 'Vigente' ? EfectivaColors.verdeSuave : EfectivaColors.grisClaro,
-                        borderRadius: BorderRadius.circular(6)),
-                      child: Text(p.estado, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600,
-                        color: p.estado == 'Vigente' ? EfectivaColors.verdeExito : EfectivaColors.grisTexto)),
-                    ),
-                  ]),
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Monto original', style: GoogleFonts.inter(fontSize: 10, color: EfectivaColors.grisSubtitulo)),
-                      Text('S/ ${moneyFmt.format(p.montoOriginal)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
-                    ])),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Saldo pendiente', style: GoogleFonts.inter(fontSize: 10, color: EfectivaColors.grisSubtitulo)),
-                      Text('S/ ${moneyFmt.format(p.saldoPendiente)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.naranjaAcento)),
-                    ])),
-                  ]),
-                  const SizedBox(height: 10),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text('${p.cuotasPagadas}/${p.cuotasTotales} cuotas', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
-                    Text('${(p.porcentajeAvance * 100).toInt()}%', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: EfectivaColors.verdeExito)),
-                  ]),
-                  const SizedBox(height: 6),
-                  LinearPercentIndicator(
-                    padding: EdgeInsets.zero, lineHeight: 6,
-                    percent: p.porcentajeAvance,
-                    backgroundColor: EfectivaColors.grisClaro,
-                    progressColor: EfectivaColors.verdeExito,
-                    barRadius: const Radius.circular(3),
-                  ),
-                ]),
-              )),
-            ],
+            // Información del negocio
+            if (cliente.nombreNegocio != null || cliente.antiguedadNegocioMeses != null)
+              _section('Negocio', [
+                if (cliente.nombreNegocio != null)
+                  _row('Nombre', cliente.nombreNegocio!, Icons.store),
+                if (cliente.antiguedadNegocioMeses != null)
+                  _row('Antigüedad', '${cliente.antiguedadNegocioMeses} meses', Icons.timer),
+              ]),
             const SizedBox(height: 20),
             // Acciones
             Row(children: [
@@ -138,11 +98,75 @@ class FichaClienteScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               )),
             ]),
+            const SizedBox(height: 16),
+            // Notas internas
+            _section('Notas Internas', [
+              if (_notasInternas[cliente.id] != null && _notasInternas[cliente.id]!.isNotEmpty)
+                ..._notasInternas[cliente.id]!.map((n) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: EfectivaColors.grisFondo, borderRadius: BorderRadius.circular(8)),
+                  child: Row(children: [
+                    const Icon(Icons.note, size: 14, color: EfectivaColors.grisSubtitulo),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(n, style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto, fontStyle: FontStyle.italic))),
+                  ]),
+                ))
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Sin notas internas', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto, fontStyle: FontStyle.italic)),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.add_comment, size: 16),
+                  label: const Text('Agregar nota'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _agregarNota(cliente.id),
+                ),
+              ),
+            ]),
             const SizedBox(height: 40),
           ]),
         )),
       ]),
     );
+  }
+
+  Future<void> _agregarNota(String clienteId) async {
+    final ctrl = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Nueva nota', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: 'Escribe tu nota interna...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.trim().isNotEmpty) {
+      setState(() {
+        _notasInternas.putIfAbsent(clienteId, () => []);
+        _notasInternas[clienteId]!.insert(0, '${DateFormat('dd/MM HH:mm').format(DateTime.now())} - $result');
+      });
+    }
   }
 
   Widget _badge(String text, Color color) {
@@ -176,6 +200,6 @@ class FichaClienteScreen extends StatelessWidget {
   }
 
   Color _califColor(String c) {
-    switch (c) { case 'A': return EfectivaColors.verdeExito; case 'B': return EfectivaColors.naranjaAcento; case 'C': return EfectivaColors.amarilloAcento; default: return EfectivaColors.grisTexto; }
+    switch (c) { case 'Normal': return EfectivaColors.verdeExito; case 'CPP': return EfectivaColors.naranjaAcento; case 'Deficiente': return EfectivaColors.rojoError; case 'Dudoso': return EfectivaColors.rojoError; case 'Perdida': return EfectivaColors.rojoError; default: return EfectivaColors.grisTexto; }
   }
 }

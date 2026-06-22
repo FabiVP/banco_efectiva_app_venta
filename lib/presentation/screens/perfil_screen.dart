@@ -38,7 +38,7 @@ class PerfilScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(oficial?.nombreCompleto ?? '', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text(oficial?.codigo ?? '', style: GoogleFonts.inter(fontSize: 13, color: Colors.white70)),
+                  Text(oficial?.codigoEmpleado ?? '', style: GoogleFonts.inter(fontSize: 13, color: Colors.white70)),
                 ]),
               )),
             ),
@@ -49,9 +49,9 @@ class PerfilScreen extends StatelessWidget {
           child: Column(children: [
             // Info del oficial
             _card([
-              _row(Icons.email_outlined, 'Email', oficial?.email ?? ''),
-              _row(Icons.location_on_outlined, 'Zona', oficial?.zona ?? ''),
-              _row(Icons.business_outlined, 'Agencia', oficial?.agencia ?? ''),
+              _row(Icons.email_outlined, 'Email', '${oficial?.codigoEmpleado ?? ''}@efectiva.pe'),
+              _row(Icons.location_on_outlined, 'Zona', '-'),
+              _row(Icons.business_outlined, 'Agencia', oficial?.agenciaNombre ?? oficial?.agenciaId ?? '-'),
             ]),
             const SizedBox(height: 16),
             // Estadísticas

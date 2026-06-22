@@ -1,13 +1,18 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import 'package:signature/signature.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/solicitud_model.dart';
+import '../../../data/models/cartera_model.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../../data/models/cliente_model.dart';
 import '../viewmodels/ventas_viewmodel.dart';
+import '../viewmodels/cartera_viewmodel.dart';
 
 class NuevaSolicitudScreen extends StatefulWidget {
   const NuevaSolicitudScreen({super.key});
@@ -20,36 +25,77 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
   bool _guardando = false;
+  final _signatureController = SignatureController(
+    penStrokeWidth: 3,
+    penColor: Colors.black,
+    exportBackgroundColor: Colors.white,
+  );
+  bool _aceptaTerminos = false;
 
-  // Datos personales
-  final _dniCtrl = TextEditingController();
+  // Paso 1: Datos del solicitante
   final _nombresCtrl = TextEditingController();
-  final _apellidoPCtrl = TextEditingController();
-  final _apellidoMCtrl = TextEditingController();
+  final _apellidosCtrl = TextEditingController();
+  final _dniCtrl = TextEditingController();
+  final _fechaNacCtrl = TextEditingController();
   final _telefonoCtrl = TextEditingController();
-  final _direccionCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  String _estadoCivil = 'Soltero(a)';
+  String _gradoInstruccion = 'Secundaria';
 
-  // Datos laborales
-  final _centroTrabajoCtrl = TextEditingController();
-  final _cargoCtrl = TextEditingController();
-  final _ingresoCtrl = TextEditingController();
+  // Paso 2: Datos del negocio y destino
+  String _tipoNegocio = 'Comercio';
+  final _nombreNegocioCtrl = TextEditingController();
+  final _direccionNegocioCtrl = TextEditingController();
+  final _antiguedadAniosCtrl = TextEditingController();
+  final _antiguedadMesesCtrl = TextEditingController();
+  final _ingresosCtrl = TextEditingController();
   final _gastosCtrl = TextEditingController();
+  final _patrimonioCtrl = TextEditingController();
+  final _destinoCtrl = TextEditingController();
+  String _actividadEconomica = 'Comercio';
 
-  // Datos del préstamo
-  final _montoCtrl = TextEditingController();
-  final _plazoCtrl = TextEditingController(text: '12');
-  String _tipoCredito = 'Personal';
-  String _destinoCredito = 'Capital de trabajo';
+  // Paso 3: Condiciones del crédito
+  double _montoSolicitado = 5000;
+  int _plazoMeses = 12;
+  String _moneda = 'PEN';
+  String _tipoCuota = 'Mensual';
+  String _garantia = 'Sin garantía';
+  final double _teaReferencial = 42.0;
 
-  // Referencias
-  final _refNombre1Ctrl = TextEditingController();
-  final _refTel1Ctrl = TextEditingController();
-  final _refRel1Ctrl = TextEditingController();
-  final _refNombre2Ctrl = TextEditingController();
-  final _refTel2Ctrl = TextEditingController();
-  final _refRel2Ctrl = TextEditingController();
+  final List<int> _plazos = [3, 6, 12, 18, 24, 36, 48, 60];
+  final List<String> _estadosCiviles = ['Soltero(a)', 'Casado(a)', 'Conviviente', 'Divorciado(a)', 'Viudo(a)'];
+  final List<String> _gradosInstruccion = ['Primaria', 'Secundaria', 'Técnico', 'Universitario'];
+  final List<String> _tiposNegocio = ['Comercio', 'Servicios', 'Producción', 'Agropecuario'];
+  final List<String> _actividadesEconomicas = ['Comercio', 'Servicios', 'Manufactura', 'Agricultura', 'Ganadería', 'Transporte', 'Construcción'];
+  final List<String> _monedas = ['PEN', 'USD'];
+  final List<String> _tiposCuota = ['Mensual', 'Quincenal', 'Semanal'];
+  final List<String> _garantias = ['Sin garantía', 'Aval', 'Hipotecaria', 'Prendaria'];
 
-  final _stepTitles = ['Datos Personales', 'Datos Laborales', 'Préstamo', 'Referencias', 'Resumen'];
+  @override
+  void initState() {
+    super.initState();
+    _fechaNacCtrl.text = '01/01/1990';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Cliente) {
+      _nombresCtrl.text = args.nombres;
+      _apellidosCtrl.text = args.apellidos;
+      _dniCtrl.text = args.numeroDocumento;
+      _telefonoCtrl.text = args.telefono ?? '';
+      _emailCtrl.text = args.email ?? '';
+      _estadoCivil = args.estadoCivil ?? '';
+      if (args.fechaNacimiento != null) {
+        _fechaNacCtrl.text = DateFormat('dd/MM/yyyy').format(args.fechaNacimiento!);
+      }
+    } else if (args is Map<String, dynamic>) {
+      if (args.containsKey('monto')) _montoSolicitado = (args['monto'] as num).toDouble();
+      if (args.containsKey('plazo')) _plazoMeses = args['plazo'] as int;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,19 +107,24 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
           preferredSize: const Size.fromHeight(50),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(children: List.generate(5, (i) => Expanded(child: Row(children: [
-              Container(
-                width: 28, height: 28,
+            child: Row(children: List.generate(4, (i) => Expanded(child: Row(children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 30, height: 30,
                 decoration: BoxDecoration(
-                  color: i <= _currentStep ? EfectivaColors.naranjaAcento : Colors.white.withValues(alpha: 0.3),
+                  color: i < _currentStep
+                      ? EfectivaColors.verdeExito
+                      : i == _currentStep
+                          ? EfectivaColors.naranjaAcento
+                          : Colors.white.withValues(alpha: 0.3),
                   shape: BoxShape.circle),
                 child: Center(child: i < _currentStep
-                    ? const Icon(Icons.check, size: 14, color: Colors.white)
-                    : Text('${i + 1}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700,
+                    ? const Icon(Icons.check, size: 16, color: Colors.white)
+                    : Text('${i + 1}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700,
                         color: i == _currentStep ? Colors.white : Colors.white70))),
               ),
-              if (i < 4) Expanded(child: Container(height: 2,
-                color: i < _currentStep ? EfectivaColors.naranjaAcento : Colors.white.withValues(alpha: 0.2))),
+              if (i < 3) Expanded(child: Container(height: 2,
+                color: i < _currentStep ? EfectivaColors.verdeExito : Colors.white.withValues(alpha: 0.2))),
             ])))),
           ),
         ),
@@ -81,208 +132,364 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
       body: Form(
         key: _formKey,
         child: Column(children: [
-          // Step title
           Container(
             width: double.infinity, padding: const EdgeInsets.all(16), color: Colors.white,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Paso ${_currentStep + 1} de 5', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
+              Text('Paso ${_currentStep + 1} de 4', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
               Text(_stepTitles[_currentStep], style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
             ]),
           ),
-          // Contenido del paso
           Expanded(child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: _buildStepContent(),
           )),
-          // Botones de navegación
-          Container(
-            padding: const EdgeInsets.all(16), color: Colors.white,
-            child: Row(children: [
-              if (_currentStep > 0)
-                Expanded(child: OutlinedButton(
-                  onPressed: () => setState(() => _currentStep--),
-                  child: const Text('Anterior'),
-                )),
-              if (_currentStep > 0) const SizedBox(width: 12),
-              Expanded(child: ElevatedButton(
-                onPressed: _guardando ? null : () {
-                  if (_currentStep < 4) {
-                    setState(() => _currentStep++);
-                  } else {
-                    _guardarSolicitud();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _currentStep == 4 ? EfectivaColors.verdeExito : EfectivaColors.azulPrincipal),
-                child: _guardando
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text(_currentStep == 4 ? 'Guardar Solicitud' : 'Siguiente'),
-              )),
-            ]),
-          ),
+          _buildBottomNav(),
         ]),
       ),
     );
   }
 
+  List<String> get _stepTitles => const [
+    'Datos del Solicitante',
+    'Datos del Negocio',
+    'Condiciones del Crédito',
+    'Confirmación y Firma',
+  ];
+
+  Widget _buildBottomNav() {
+    return Container(
+      padding: const EdgeInsets.all(16), color: Colors.white,
+      child: Row(children: [
+        if (_currentStep > 0)
+          Expanded(child: OutlinedButton(
+            onPressed: () => setState(() => _currentStep--),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 52),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: Text('Anterior', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          )),
+        if (_currentStep > 0) const SizedBox(width: 12),
+        Expanded(child: ElevatedButton(
+          onPressed: _guardando ? null : () {
+            if (_currentStep == 3) {
+              _guardarSolicitud();
+            } else {
+              if (_formKey.currentState!.validate()) {
+                setState(() => _currentStep++);
+              }
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _currentStep == 3 ? EfectivaColors.verdeExito : EfectivaColors.azulPrincipal,
+            minimumSize: const Size(0, 52),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          child: _guardando
+              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+              : Text(_currentStep == 3 ? 'Enviar Solicitud' : 'Siguiente',
+                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700)),
+        )),
+      ]),
+    );
+  }
+
   Widget _buildStepContent() {
     switch (_currentStep) {
-      case 0: return _datosPersonales();
-      case 1: return _datosLaborales();
-      case 2: return _datosPrestamo();
-      case 3: return _referencias();
-      case 4: return _resumen();
+      case 0: return _pasoDatosSolicitante();
+      case 1: return _pasoDatosNegocio();
+      case 2: return _pasoCondicionesCredito();
+      case 3: return _pasoConfirmacionFirma();
       default: return const SizedBox.shrink();
     }
   }
 
-  Widget _datosPersonales() {
+  // ─── Paso 1: Datos del solicitante (RF-44) ─────────────────────────────────
+  Widget _pasoDatosSolicitante() {
     return Column(children: [
-      _field(_dniCtrl, 'N° DNI', Icons.badge_outlined, keyboard: TextInputType.number, validator: Validators.dni),
-      _field(_nombresCtrl, 'Nombres', Icons.person_outline, validator: Validators.requerido),
-      _field(_apellidoPCtrl, 'Apellido paterno', Icons.person_outline, validator: Validators.requerido),
-      _field(_apellidoMCtrl, 'Apellido materno', Icons.person_outline),
-      _field(_telefonoCtrl, 'Teléfono', Icons.phone_outlined, keyboard: TextInputType.phone, validator: Validators.telefono),
-      _field(_direccionCtrl, 'Dirección', Icons.location_on_outlined, validator: Validators.requerido),
+      _card(children: [
+        _field(_nombresCtrl, 'Nombres', Icons.person_outline, validator: Validators.requerido),
+        _field(_apellidosCtrl, 'Apellidos', Icons.person_outline, validator: Validators.requerido),
+        _field(_dniCtrl, 'N° Documento (DNI)', Icons.badge_outlined,
+            keyboard: TextInputType.number, maxLength: 8, validator: Validators.dni),
+        _buildFechaNacimiento(),
+        const SizedBox(height: 12),
+        _buildDropdown('Estado civil', _estadoCivil, _estadosCiviles, (v) => setState(() => _estadoCivil = v!)),
+        const SizedBox(height: 12),
+        _buildDropdown('Grado de instrucción', _gradoInstruccion, _gradosInstruccion, (v) => setState(() => _gradoInstruccion = v!)),
+        _field(_telefonoCtrl, 'Teléfono', Icons.phone_outlined, keyboard: TextInputType.phone, validator: Validators.telefono),
+        _field(_emailCtrl, 'Correo electrónico (opcional)', Icons.email_outlined),
+      ]),
     ]);
   }
 
-  Widget _datosLaborales() {
+  Widget _buildFechaNacimiento() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: _fechaNacCtrl,
+        readOnly: true,
+        onTap: _seleccionarFecha,
+        decoration: InputDecoration(
+          labelText: 'Fecha de nacimiento',
+          prefixIcon: const Icon(Icons.cake_outlined, color: EfectivaColors.azulPrincipal, size: 20),
+          suffixIcon: const Icon(Icons.date_range, color: EfectivaColors.grisSubtitulo, size: 18),
+        ),
+        validator: (v) => v == null || v.isEmpty ? 'Selecciona la fecha' : null,
+      ),
+    );
+  }
+
+  Future<void> _seleccionarFecha() async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: DateTime(1990, 1, 1),
+      firstDate: DateTime(1950),
+      lastDate: DateTime(2007),
+    );
+    if (d != null) _fechaNacCtrl.text = DateFormat('dd/MM/yyyy').format(d);
+  }
+
+  // ─── Paso 2: Datos del negocio y destino (RF-45) ────────────────────────────
+  Widget _pasoDatosNegocio() {
     return Column(children: [
-      _field(_centroTrabajoCtrl, 'Centro de trabajo', Icons.business_outlined, validator: Validators.requerido),
-      _field(_cargoCtrl, 'Cargo / Ocupación', Icons.work_outline, validator: Validators.requerido),
-      _field(_ingresoCtrl, 'Ingreso mensual (S/)', Icons.attach_money, keyboard: TextInputType.number, validator: Validators.monto),
-      _field(_gastosCtrl, 'Gastos mensuales (S/)', Icons.money_off, keyboard: TextInputType.number, validator: Validators.monto),
-      // Indicador de capacidad
-      if (_ingresoCtrl.text.isNotEmpty && _gastosCtrl.text.isNotEmpty) ...[
+      _card(children: [
+        _buildDropdown('Tipo de negocio', _tipoNegocio, _tiposNegocio, (v) => setState(() => _tipoNegocio = v!)),
+        _field(_nombreNegocioCtrl, 'Nombre del negocio', Icons.store_outlined, validator: Validators.requerido),
+        _field(_direccionNegocioCtrl, 'Dirección del negocio', Icons.location_on_outlined, validator: Validators.requerido),
+        Row(children: [
+          Expanded(child: _field(_antiguedadAniosCtrl, 'Años', Icons.calendar_today, keyboard: TextInputType.number, validator: Validators.requerido)),
+          const SizedBox(width: 10),
+          Expanded(child: _field(_antiguedadMesesCtrl, 'Meses', Icons.calendar_today, keyboard: TextInputType.number, validator: Validators.requerido)),
+        ]),
+      ]),
+      const SizedBox(height: 12),
+      _card(children: [
+        Text('Capacidad de pago', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+        const SizedBox(height: 8),
+        _field(_ingresosCtrl, 'Ingresos estimados mensuales (S/)', Icons.attach_money, keyboard: TextInputType.number, validator: Validators.monto),
+        _field(_gastosCtrl, 'Gastos mensuales (S/)', Icons.money_off, keyboard: TextInputType.number, validator: Validators.monto),
+        _field(_patrimonioCtrl, 'Patrimonio estimado (S/) — opcional', Icons.account_balance_outlined, keyboard: TextInputType.number),
+        if (_ingresosCtrl.text.isNotEmpty && _gastosCtrl.text.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: EfectivaColors.azulSuave, borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              const Icon(Icons.info_outline, color: EfectivaColors.azulPrincipal, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(
+                'Capacidad de cuota estimada: S/ ${((double.tryParse(_ingresosCtrl.text) ?? 0) - (double.tryParse(_gastosCtrl.text) ?? 0)) * 0.4} /mes',
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: EfectivaColors.azulPrincipal))),
+            ]),
+          ),
+        ],
+      ]),
+      const SizedBox(height: 12),
+      _card(children: [
+        _buildDropdown('Actividad económica (CIIU)', _actividadEconomica, _actividadesEconomicas, (v) => setState(() => _actividadEconomica = v!)),
+        _field(_destinoCtrl, 'Destino del crédito', Icons.trending_up_outlined, validator: Validators.requerido),
+      ]),
+    ]);
+  }
+
+  // ─── Paso 3: Condiciones del crédito (RF-46) ───────────────────────────────
+  Widget _pasoCondicionesCredito() {
+    return Column(children: [
+      _card(children: [
+        Text('Monto solicitado: S/ ${NumberFormat('#,##0').format(_montoSolicitado.round())}',
+          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+        const SizedBox(height: 4),
+        Text('Arrastra para ajustar (S/500 — S/150,000)',
+          style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisSubtitulo)),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: EfectivaColors.naranjaAcento,
+            thumbColor: EfectivaColors.naranjaAcento,
+            inactiveTrackColor: EfectivaColors.grisClaro,
+          ),
+          child: Slider(value: _montoSolicitado, min: 500, max: 150000, divisions: 299,
+            onChanged: (v) => setState(() => _montoSolicitado = v)),
+        ),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('S/ 500', style: GoogleFonts.inter(fontSize: 10, color: EfectivaColors.grisSubtitulo)),
+          Text('S/ 150,000', style: GoogleFonts.inter(fontSize: 10, color: EfectivaColors.grisSubtitulo)),
+        ]),
+        const SizedBox(height: 16),
+        Text('Plazo en meses', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: _plazos.map((p) => ChoiceChip(
+          label: Text('$p', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+          selected: _plazoMeses == p,
+          onSelected: (_) => setState(() => _plazoMeses = p),
+          selectedColor: EfectivaColors.azulPrincipal,
+          backgroundColor: EfectivaColors.grisClaro,
+          labelStyle: GoogleFonts.inter(color: _plazoMeses == p ? Colors.white : EfectivaColors.grisTexto),
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        )).toList()),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(child: _buildDropdown('Moneda', _moneda, _monedas, (v) => setState(() => _moneda = v!))),
+          const SizedBox(width: 10),
+          Expanded(child: _buildDropdown('Tipo cuota', _tipoCuota, _tiposCuota, (v) => setState(() => _tipoCuota = v!))),
+        ]),
+        const SizedBox(height: 10),
+        _buildDropdown('Garantía', _garantia, _garantias, (v) => setState(() => _garantia = v!)),
+      ]),
+      const SizedBox(height: 12),
+      _buildSimuladorEnVivo(),
+    ]);
+  }
+
+  Widget _buildSimuladorEnVivo() {
+    final cuota = _calcularCuota();
+    final total = cuota * _plazoMeses;
+    final costo = total - _montoSolicitado;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: EfectivaColors.gradienteTarjeta,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: EfectivaColors.azulOscuro.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(children: [
+        Text('SIMULACIÓN EN TIEMPO REAL', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white54, letterSpacing: 1.2)),
+        const SizedBox(height: 14),
+        Row(children: [
+          Expanded(child: _metricaSim('Cuota $_tipoCuota', 'S/ ${NumberFormat('#,##0.00', 'es').format(cuota)}', EfectivaColors.naranjaAcento)),
+          Expanded(child: _metricaSim('Total a pagar', 'S/ ${NumberFormat('#,##0.00', 'es').format(total)}', Colors.white70)),
+          Expanded(child: _metricaSim('Costo financiero', 'S/ ${NumberFormat('#,##0.00', 'es').format(costo)}', const Color(0xFFFF6B6B))),
+        ]),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+          child: Text('TEA $_teaReferencial% · Amortización francesa', style: GoogleFonts.inter(fontSize: 10, color: Colors.white54)),
+        ),
+      ]),
+    );
+  }
+
+  Widget _metricaSim(String label, String value, Color color) => Column(children: [
+    Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: color)),
+    Text(label, style: GoogleFonts.inter(fontSize: 9, color: Colors.white54), textAlign: TextAlign.center),
+  ]);
+
+  double _calcularCuota() {
+    if (_montoSolicitado <= 0 || _plazoMeses <= 0) return 0;
+    final tasaMensual = _calcularTasaMensual(_teaReferencial);
+    if (tasaMensual <= 0) return _montoSolicitado / _plazoMeses;
+    final denom = 1 - pow(1 + tasaMensual, -_plazoMeses);
+    if (denom == 0) return _montoSolicitado / _plazoMeses;
+    return _montoSolicitado * tasaMensual / denom;
+  }
+
+  double _calcularTasaMensual(double tea) {
+    return pow(1 + tea / 100, 1 / 12) - 1;
+  }
+
+  // ─── Paso 4: Confirmación y firma digital (RF-48) ──────────────────────────
+  Widget _pasoConfirmacionFirma() {
+    final moneyFmt = NumberFormat('#,##0.00', 'es');
+    final cuota = _calcularCuota();
+    return Column(children: [
+      _resumenCard('Datos del Solicitante', [
+        _resRow('Nombres', _nombresCtrl.text),
+        _resRow('Apellidos', _apellidosCtrl.text),
+        _resRow('Documento', _dniCtrl.text),
+        _resRow('Estado civil', _estadoCivil),
+        _resRow('Teléfono', _telefonoCtrl.text),
+      ]),
+      const SizedBox(height: 10),
+      _resumenCard('Datos del Negocio', [
+        _resRow('Tipo', _tipoNegocio),
+        _resRow('Negocio', _nombreNegocioCtrl.text),
+        _resRow('Dirección', _direccionNegocioCtrl.text),
+        _resRow('Ingresos', 'S/ ${moneyFmt.format(double.tryParse(_ingresosCtrl.text) ?? 0)}'),
+        _resRow('Destino', _destinoCtrl.text),
+      ]),
+      const SizedBox(height: 10),
+      _resumenCard('Condiciones del Crédito', [
+        _resRow('Monto', 'S/ ${moneyFmt.format(_montoSolicitado)}'),
+        _resRow('Plazo', '$_plazoMeses meses'),
+        _resRow('Cuota', 'S/ ${moneyFmt.format(cuota)} mes'),
+        _resRow('Moneda', _moneda),
+        _resRow('Garantía', _garantia),
+      ]),
+      const SizedBox(height: 16),
+      // Firma digital
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Firma digital del cliente', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+          const SizedBox(height: 4),
+          Text('El cliente debe firmar en el recuadro inferior', style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisSubtitulo)),
+          const SizedBox(height: 10),
+          Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: EfectivaColors.grisFondo,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: EfectivaColors.grisClaro),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Signature(
+                controller: _signatureController,
+                height: 120,
+                backgroundColor: EfectivaColors.grisFondo,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            TextButton.icon(
+              icon: const Icon(Icons.refresh, size: 16),
+              label: Text('Limpiar', style: GoogleFonts.inter(fontSize: 12)),
+              onPressed: () => _signatureController.clear(),
+            ),
+            const Spacer(),
+            if (_signatureController.isNotEmpty)
+              Text('✏️ Firmado', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.verdeExito, fontWeight: FontWeight.w600)),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      // Aceptación de términos
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 24, height: 24,
+            child: Checkbox(
+              value: _aceptaTerminos,
+              onChanged: (v) => setState(() => _aceptaTerminos = v ?? false),
+              activeColor: EfectivaColors.azulPrincipal,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(
+            'El cliente declara que los datos son veraces y autoriza el tratamiento de sus datos personales conforme a la Ley N° 29733.',
+            style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto, height: 1.4),
+          )),
+        ]),
+      ),
+      if (_guardando) ...[
         const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: EfectivaColors.azulSuave, borderRadius: BorderRadius.circular(12)),
           child: Row(children: [
-            const Icon(Icons.info_outline, color: EfectivaColors.azulPrincipal, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text(
-              'Disponible para cuota: S/ ${NumberFormat('#,##0.00', 'es').format(((double.tryParse(_ingresoCtrl.text) ?? 0) - (double.tryParse(_gastosCtrl.text) ?? 0)) * 0.4)}',
-              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: EfectivaColors.azulPrincipal),
-            )),
+            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            const SizedBox(width: 12),
+            Text('Guardando solicitud...', style: GoogleFonts.inter(fontSize: 13, color: EfectivaColors.azulPrincipal)),
           ]),
         ),
       ],
-    ]);
-  }
-
-  Widget _datosPrestamo() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Tipo de crédito
-      Text('Tipo de crédito', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, children: ['Personal', 'PYME', 'Grupal', 'Agrícola'].map((t) =>
-        ChoiceChip(
-          label: Text(t), selected: _tipoCredito == t,
-          onSelected: (s) => setState(() => _tipoCredito = t),
-          selectedColor: EfectivaColors.azulPrincipal,
-          labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: _tipoCredito == t ? Colors.white : EfectivaColors.grisTexto),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), side: BorderSide.none,
-        ),
-      ).toList()),
-      const SizedBox(height: 16),
-      _field(_montoCtrl, 'Monto solicitado (S/)', Icons.payments_outlined, keyboard: TextInputType.number, validator: Validators.monto),
-      _field(_plazoCtrl, 'Plazo (meses)', Icons.calendar_month_outlined, keyboard: TextInputType.number, validator: Validators.requerido),
-      // Destino del crédito
-      const SizedBox(height: 8),
-      Text('Destino del crédito', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
-      const SizedBox(height: 8),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: EfectivaColors.grisClaro)),
-        child: DropdownButtonHideUnderline(child: DropdownButton<String>(
-          value: _destinoCredito, isExpanded: true,
-          items: ['Capital de trabajo', 'Compra de activo fijo', 'Ampliación de negocio', 'Mejoramiento de vivienda', 'Consumo personal', 'Educación', 'Salud', 'Otro']
-              .map((d) => DropdownMenuItem(value: d, child: Text(d, style: GoogleFonts.inter(fontSize: 14)))).toList(),
-          onChanged: (v) => setState(() => _destinoCredito = v!),
-        )),
-      ),
-      const SizedBox(height: 16),
-      // Cuota estimada
-      if (_montoCtrl.text.isNotEmpty && _plazoCtrl.text.isNotEmpty)
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(gradient: EfectivaColors.gradienteNaranja, borderRadius: BorderRadius.circular(14)),
-          child: Row(children: [
-            const Icon(Icons.calculate, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Cuota estimada mensual', style: GoogleFonts.inter(fontSize: 12, color: Colors.white70)),
-              Text('S/ ${NumberFormat('#,##0.00', 'es').format(_calcCuota())}',
-                style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-            ]),
-          ]),
-        ),
-    ]);
-  }
-
-  double _calcCuota() {
-    final m = double.tryParse(_montoCtrl.text) ?? 0;
-    final p = int.tryParse(_plazoCtrl.text) ?? 12;
-    if (m <= 0 || p <= 0) return 0;
-    const tasa = 0.24 / 12;
-    return m * (tasa * _pow(1 + tasa, p)) / (_pow(1 + tasa, p) - 1);
-  }
-
-  double _pow(double base, int exp) { double r = 1; for (int i = 0; i < exp; i++) r *= base; return r; }
-
-  Widget _referencias() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Referencia 1', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
-      const SizedBox(height: 8),
-      _field(_refNombre1Ctrl, 'Nombre completo', Icons.person_outline),
-      _field(_refTel1Ctrl, 'Teléfono', Icons.phone_outlined, keyboard: TextInputType.phone),
-      _field(_refRel1Ctrl, 'Relación', Icons.people_outline),
-      const SizedBox(height: 16),
-      Text('Referencia 2', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
-      const SizedBox(height: 8),
-      _field(_refNombre2Ctrl, 'Nombre completo', Icons.person_outline),
-      _field(_refTel2Ctrl, 'Teléfono', Icons.phone_outlined, keyboard: TextInputType.phone),
-      _field(_refRel2Ctrl, 'Relación', Icons.people_outline),
-    ]);
-  }
-
-  Widget _resumen() {
-    final moneyFmt = NumberFormat('#,##0.00', 'es');
-    return Column(children: [
-      _resumenCard('Datos del Solicitante', [
-        _resRow('DNI', _dniCtrl.text),
-        _resRow('Nombre', '${_nombresCtrl.text} ${_apellidoPCtrl.text} ${_apellidoMCtrl.text}'),
-        _resRow('Teléfono', _telefonoCtrl.text),
-        _resRow('Dirección', _direccionCtrl.text),
-      ]),
-      const SizedBox(height: 12),
-      _resumenCard('Datos Laborales', [
-        _resRow('Centro de trabajo', _centroTrabajoCtrl.text),
-        _resRow('Cargo', _cargoCtrl.text),
-        _resRow('Ingreso', 'S/ ${moneyFmt.format(double.tryParse(_ingresoCtrl.text) ?? 0)}'),
-        _resRow('Gastos', 'S/ ${moneyFmt.format(double.tryParse(_gastosCtrl.text) ?? 0)}'),
-      ]),
-      const SizedBox(height: 12),
-      _resumenCard('Datos del Préstamo', [
-        _resRow('Tipo', _tipoCredito),
-        _resRow('Monto', 'S/ ${moneyFmt.format(double.tryParse(_montoCtrl.text) ?? 0)}'),
-        _resRow('Plazo', '${_plazoCtrl.text} meses'),
-        _resRow('Destino', _destinoCredito),
-        _resRow('Cuota est.', 'S/ ${moneyFmt.format(_calcCuota())}'),
-      ]),
-      const SizedBox(height: 16),
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: EfectivaColors.amarilloClaro, borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [
-          const Icon(Icons.warning_amber, color: EfectivaColors.naranjaAcento, size: 20),
-          const SizedBox(width: 10),
-          Expanded(child: Text('Esta solicitud se guardará localmente. Use "Transmitir" para enviarla al sistema central.',
-            style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.negroTexto))),
-        ]),
-      ),
     ]);
   }
 
@@ -291,7 +498,11 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
       width: double.infinity, padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.azulPrincipal)),
+        Row(children: [
+          Container(width: 4, height: 18, decoration: BoxDecoration(color: EfectivaColors.azulPrincipal, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 8),
+          Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.azulPrincipal)),
+        ]),
         const Divider(height: 16),
         ...rows,
       ]),
@@ -308,65 +519,156 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
     ));
   }
 
+  // ─── Widgets reutilizables ──────────────────────────────────────────────────
+  Widget _card({required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: Column(children: children),
+    );
+  }
+
   Widget _field(TextEditingController ctrl, String label, IconData icon,
-      {TextInputType keyboard = TextInputType.text, String? Function(String?)? validator}) {
+      {TextInputType keyboard = TextInputType.text, int? maxLength, String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
-        controller: ctrl, keyboardType: keyboard, validator: validator,
+        controller: ctrl, keyboardType: keyboard, maxLength: maxLength, validator: validator,
         onChanged: (_) => setState(() {}),
-        decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon, color: EfectivaColors.azulPrincipal, size: 20)),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: EfectivaColors.azulPrincipal, size: 20),
+          counterText: '',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        initialValue: value,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true, fillColor: EfectivaColors.grisFondo.withValues(alpha: 0.3),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        items: items.map((t) => DropdownMenuItem(value: t, child: Text(t, style: GoogleFonts.inter(fontSize: 14)))).toList(),
+        onChanged: onChanged,
       ),
     );
   }
 
   Future<void> _guardarSolicitud() async {
+    if (!_aceptaTerminos) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Debe aceptar los términos y condiciones', style: GoogleFonts.inter(color: Colors.white)),
+        backgroundColor: EfectivaColors.rojoError,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    if (_signatureController.isNotEmpty != true) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('El cliente debe firmar digitalmente', style: GoogleFonts.inter(color: Colors.white)),
+        backgroundColor: EfectivaColors.rojoError,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
     setState(() => _guardando = true);
+
     await Future.delayed(const Duration(milliseconds: 1000));
 
     final oficial = context.read<AuthViewModel>().oficialActual;
     final solicitud = SolicitudCredito(
       id: 'SOL-${const Uuid().v4().substring(0, 6).toUpperCase()}',
+      asesorId: oficial?.id ?? '',
       clienteId: 'NEW-${_dniCtrl.text}',
-      clienteNombre: '${_nombresCtrl.text} ${_apellidoPCtrl.text} ${_apellidoMCtrl.text}',
+      clienteNombre: '${_nombresCtrl.text} ${_apellidosCtrl.text}',
       clienteDni: _dniCtrl.text,
-      oficialId: oficial?.id ?? '',
-      montoSolicitado: double.tryParse(_montoCtrl.text) ?? 0,
-      plazoMeses: int.tryParse(_plazoCtrl.text) ?? 12,
-      destinoCredito: _destinoCredito,
-      tipoCredito: _tipoCredito,
-      tasaInteres: 24,
-      centroTrabajo: _centroTrabajoCtrl.text,
-      cargoOcupacion: _cargoCtrl.text,
-      ingresoMensual: double.tryParse(_ingresoCtrl.text) ?? 0,
+      nombres: _nombresCtrl.text,
+      apellidos: _apellidosCtrl.text,
+      montoSolicitado: _montoSolicitado,
+      plazoMeses: _plazoMeses,
+      destinoCredito: _destinoCtrl.text,
+      tipoCredito: _tipoNegocio == 'Comercio' ? 'Microcrédito' : _tipoNegocio,
+      tasaInteres: _teaReferencial,
+      centroTrabajo: _nombreNegocioCtrl.text,
+      cargoOcupacion: _tipoNegocio,
+      ingresosEstimados: double.tryParse(_ingresosCtrl.text) ?? 0,
       gastosMensuales: double.tryParse(_gastosCtrl.text) ?? 0,
-      referencias: [
-        if (_refNombre1Ctrl.text.isNotEmpty) Referencia(nombre: _refNombre1Ctrl.text, telefono: _refTel1Ctrl.text, relacion: _refRel1Ctrl.text),
-        if (_refNombre2Ctrl.text.isNotEmpty) Referencia(nombre: _refNombre2Ctrl.text, telefono: _refTel2Ctrl.text, relacion: _refRel2Ctrl.text),
-      ],
       estado: EstadoSolicitud.borrador,
       fechaCreacion: DateTime.now(),
     );
 
-    await context.read<SolicitudViewModel>().agregarSolicitud(solicitud);
+    final persistido = await context.read<SolicitudViewModel>().agregarSolicitud(solicitud);
+
+    if (!persistido) {
+      try {
+        context.read<CarteraNuevoViewModel>().agregarItem(
+          CarteraItem(
+            id: solicitud.id,
+            asesorId: solicitud.asesorId,
+            clienteId: solicitud.clienteId,
+            clienteNombre: solicitud.clienteNombre ?? '',
+            clienteDniCensurado: solicitud.clienteDni != null
+                ? '***${solicitud.clienteDni!.substring(solicitud.clienteDni!.length - 4)}'
+                : '',
+            agenciaId: '',
+            fechaAsignacion: DateTime.now(),
+            tipoGestion: TipoGestion.nuevaSolicitud,
+            prioridad: PrioridadVisita.normal,
+            scorePrioridad: 50,
+            montoCredito: solicitud.montoSolicitado,
+            pendienteSync: true,
+          ),
+        );
+      } catch (_) {}
+    }
 
     if (!mounted) return;
     setState(() => _guardando = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Solicitud ${solicitud.id} guardada correctamente'),
-      backgroundColor: EfectivaColors.verdeExito,
-    ));
-    Navigator.pop(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(color: EfectivaColors.verdeSuave, shape: BoxShape.circle),
+            child: const Icon(Icons.check_circle, color: EfectivaColors.verdeExito, size: 36),
+          ),
+          const SizedBox(height: 16),
+          Text('Solicitud Creada', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(solicitud.id, style: GoogleFonts.inter(fontSize: 14, color: EfectivaColors.azulPrincipal, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text('Use "Transmisión" para enviarla al sistema central.',
+            style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto), textAlign: TextAlign.center),
+        ]),
+        actions: [FilledButton(
+          onPressed: () { Navigator.pop(ctx); Navigator.pop(context); },
+          child: const Text('Ir al inicio'),
+        )],
+      ),
+    );
   }
 
   @override
   void dispose() {
-    _dniCtrl.dispose(); _nombresCtrl.dispose(); _apellidoPCtrl.dispose(); _apellidoMCtrl.dispose();
-    _telefonoCtrl.dispose(); _direccionCtrl.dispose(); _centroTrabajoCtrl.dispose(); _cargoCtrl.dispose();
-    _ingresoCtrl.dispose(); _gastosCtrl.dispose(); _montoCtrl.dispose(); _plazoCtrl.dispose();
-    _refNombre1Ctrl.dispose(); _refTel1Ctrl.dispose(); _refRel1Ctrl.dispose();
-    _refNombre2Ctrl.dispose(); _refTel2Ctrl.dispose(); _refRel2Ctrl.dispose();
+    _nombresCtrl.dispose(); _apellidosCtrl.dispose(); _dniCtrl.dispose();
+    _fechaNacCtrl.dispose(); _telefonoCtrl.dispose(); _emailCtrl.dispose();
+    _nombreNegocioCtrl.dispose(); _direccionNegocioCtrl.dispose();
+    _antiguedadAniosCtrl.dispose(); _antiguedadMesesCtrl.dispose();
+    _ingresosCtrl.dispose(); _gastosCtrl.dispose(); _patrimonioCtrl.dispose();
+    _destinoCtrl.dispose();
+    _signatureController.dispose();
     super.dispose();
   }
 }

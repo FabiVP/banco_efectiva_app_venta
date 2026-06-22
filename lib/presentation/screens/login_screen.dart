@@ -27,6 +27,9 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthViewModel>().cargarEstadoBloqueo();
+    });
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -133,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen>
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Demo: EF2024-0145 / 1234',
+                                'Prueba: EF2024-0145 / demo123456',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   color: Colors.white60,
@@ -158,42 +161,49 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildLogo() {
     return Column(
       children: [
-        // Logo con ícono de campo
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Text(
-                  'E',
-                  style: GoogleFonts.inter(
-                    fontSize: 48,
-                    fontWeight: FontWeight.w900,
-                    color: EfectivaColors.azulPrincipal,
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Container(
+              width: 100, height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset('assets/images/logo_efectiva.png',
+                  width: 100, height: 100, fit: BoxFit.cover),
+              ),
             ),
-          ),
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: EfectivaColors.naranjaAcento,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2.5),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8),
+                ],
+              ),
+              child: Center(
+                child: Text('V', style: GoogleFonts.inter(
+                  fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         Text(
-          'Efectiva',
+          'Financiera Efectiva',
           style: GoogleFonts.pacifico(
-            fontSize: 36,
+            fontSize: 32,
             color: Colors.white,
             letterSpacing: 1.0,
           ),
@@ -365,6 +375,34 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   );
                 }
+                if (viewModel.state == AuthState.locked) {
+                  return Column(children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: EfectivaColors.rojoSuave,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: EfectivaColors.rojoError.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(children: [
+                        const Icon(Icons.lock_outline, color: EfectivaColors.rojoError, size: 36),
+                        const SizedBox(height: 8),
+                        Text('Cuenta bloqueada',
+                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.rojoError)),
+                        const SizedBox(height: 4),
+                        Text('Demasiados intentos fallidos',
+                          style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
+                        const SizedBox(height: 8),
+                        Text('${viewModel.segundosRestantes}s',
+                          style: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.w800, color: EfectivaColors.rojoError)),
+                        const SizedBox(height: 4),
+                        Text('Espera para reintentar',
+                          style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisTexto)),
+                      ]),
+                    ),
+                  ]);
+                }
                 return Column(
                   children: [
                     Container(
@@ -451,9 +489,13 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
+      // Normalizamos: quitamos espacios y convertimos el código a mayúsculas
+      final codigo = _codigoController.text.trim().toUpperCase();
+      final password = _passwordController.text.trim();
+
       final success = await context.read<AuthViewModel>().login(
-            _codigoController.text,
-            _passwordController.text,
+            codigo,
+            password,
           );
 
       if (!mounted) return;

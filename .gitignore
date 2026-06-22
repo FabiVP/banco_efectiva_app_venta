@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Credenciales locales — NO subir al repo
+.env
+
+# PostgREST — logs de ejecución (se regeneran al iniciar)
+postgrest/*.log
+postgrest/*.txt
+
+# Supabase CLI — temporales (no usamos supabase CLI, usamos PostgreSQL nativo)
+supabase/.branches/
+supabase/.temp/
+supabase/snippets/
+supabase/config.toml

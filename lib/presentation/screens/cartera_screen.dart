@@ -110,30 +110,27 @@ class CarteraScreen extends StatelessWidget {
                                         child: Center(child: Text(c.iniciales,
                                           style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white))),
                                       ),
-                                      if (c.tieneRenovacion)
+                                      if (!c.esProspecto)
                                         Positioned(right: -2, top: -2, child: Container(
                                           width: 18, height: 18,
                                           decoration: BoxDecoration(color: EfectivaColors.verdeExito, shape: BoxShape.circle,
                                             border: Border.all(color: Colors.white, width: 2)),
-                                          child: const Icon(Icons.autorenew, size: 10, color: Colors.white),
+                                          child: const Icon(Icons.star, size: 10, color: Colors.white),
                                         )),
                                     ]),
                                     const SizedBox(width: 14),
                                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                       Text(c.nombreCompleto, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
                                       const SizedBox(height: 2),
-                                      Text('DNI: ${c.dni}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
+                                      Text('DNI: ${c.numeroDocumento}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
                                       const SizedBox(height: 4),
                                       Row(children: [
-                                        _tag(c.calificacion, _califColor(c.calificacion)),
+                                        _tag(c.calificacionSbs ?? 'N', _califColor(c.calificacionSbs ?? 'N')),
                                         const SizedBox(width: 6),
-                                        _tag(c.ocupacion, EfectivaColors.azulPrincipal),
+                                        _tag(c.tipoNegocio ?? '', EfectivaColors.azulPrincipal),
                                       ]),
                                     ])),
                                     Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                                      if (c.productosActivos.isNotEmpty)
-                                        Text('${c.productosActivos.length} prod.', style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisSubtitulo)),
-                                      const SizedBox(height: 4),
                                       const Icon(Icons.chevron_right, color: EfectivaColors.grisSubtitulo, size: 20),
                                     ]),
                                   ]),
@@ -159,10 +156,11 @@ class CarteraScreen extends StatelessWidget {
 
   Color _califColor(String cal) {
     switch (cal) {
-      case 'A': return EfectivaColors.verdeExito;
-      case 'B': return EfectivaColors.naranjaAcento;
-      case 'C': return EfectivaColors.amarilloAcento;
-      case 'D': return EfectivaColors.rojoError;
+      case 'Normal': return EfectivaColors.verdeExito;
+      case 'CPP': return EfectivaColors.naranjaAcento;
+      case 'Deficiente': return EfectivaColors.amarilloAcento;
+      case 'Dudoso': return EfectivaColors.rojoError;
+      case 'Perdida': return EfectivaColors.rojoError;
       default: return EfectivaColors.grisTexto;
     }
   }

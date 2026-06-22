@@ -81,11 +81,11 @@ class DashboardScreen extends StatelessWidget {
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             const Icon(Icons.location_on_outlined, color: Colors.white70, size: 16),
                             const SizedBox(width: 6),
-                            Text(oficial?.zona ?? 'Zona no asignada', style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w500)),
+                            Text(oficial?.perfil ?? 'Perfil no asignado', style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w500)),
                             Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 1, height: 14, color: Colors.white30),
                             const Icon(Icons.business_outlined, color: Colors.white70, size: 16),
                             const SizedBox(width: 6),
-                            Text(oficial?.agencia ?? '', style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w500)),
+                            Text(oficial?.agenciaNombre ?? oficial?.agenciaId ?? '', style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w500)),
                           ]),
                         ),
                       ],
@@ -125,7 +125,7 @@ class DashboardScreen extends StatelessWidget {
       const SizedBox(width: 10),
       Expanded(child: _kpi('Solicitudes', '${sol.totalSolicitudes}', Icons.description_outlined, EfectivaColors.naranjaAcento)),
       const SizedBox(width: 10),
-      Expanded(child: _kpi('Renovaciones', '${cart.clientesConRenovacion}', Icons.autorenew, EfectivaColors.verdeExito)),
+      Expanded(child: _kpi('Renovaciones', '${cart.clientes.length}', Icons.autorenew, EfectivaColors.verdeExito)),
     ]);
   }
 
@@ -227,7 +227,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildClientesRenovacion(CarteraViewModel cartera) {
-    final ren = cartera.clientes.where((c) => c.tieneRenovacion).take(3).toList();
+    final ren = cartera.clientes.take(3).toList();
     if (ren.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Clientes con renovación', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
@@ -241,10 +241,10 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(c.nombreCompleto, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
-            Text('DNI: ${c.dni} · Calif: ${c.calificacion}', style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisTexto)),
+            Text('DNI: ${c.numeroDocumento} · Calf: ${c.calificacionSbs ?? 'N'}', style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisTexto)),
           ])),
           Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: EfectivaColors.verdeSuave, borderRadius: BorderRadius.circular(8)),
-            child: Text('S/ ${NumberFormat('#,##0', 'es').format(c.montoMaximoAprobado)}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: EfectivaColors.verdeExito))),
+            child: Text('S/ ${NumberFormat('#,##0', 'es').format(c.ingresosEstimados ?? 0)}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: EfectivaColors.verdeExito))),
         ]),
       )),
     ]);

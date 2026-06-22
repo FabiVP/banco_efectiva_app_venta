@@ -1,51 +1,59 @@
 class Oficial {
   final String id;
-  final String codigo;
-  final String nombreCompleto;
-  final String email;
-  final String zona;
-  final String agencia;
-  final String fotoUrl;
-  final double metaDiaria;
-  final double metaMensual;
+  final String codigoEmpleado;
+  final String nombres;
+  final String apellidos;
+  final String? agenciaId;
+  final String? agenciaNombre;
+  final String perfil;
+  final String? tokenFcm;
+  final String? codAsesor;
 
   Oficial({
     required this.id,
-    required this.codigo,
-    required this.nombreCompleto,
-    required this.email,
-    required this.zona,
-    required this.agencia,
-    this.fotoUrl = '',
-    this.metaDiaria = 0,
-    this.metaMensual = 0,
+    required this.codigoEmpleado,
+    required this.nombres,
+    required this.apellidos,
+    this.agenciaId,
+    this.agenciaNombre,
+    this.perfil = 'operador',
+    this.tokenFcm,
+    this.codAsesor,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'codigo': codigo,
-      'nombreCompleto': nombreCompleto,
-      'email': email,
-      'zona': zona,
-      'agencia': agencia,
-      'fotoUrl': fotoUrl,
-      'metaDiaria': metaDiaria,
-      'metaMensual': metaMensual,
-    };
-  }
+  String get nombreCompleto => '$nombres $apellidos';
 
-  factory Oficial.fromMap(Map<String, dynamic> map) {
-    return Oficial(
-      id: map['id'] ?? '',
-      codigo: map['codigo'] ?? '',
-      nombreCompleto: map['nombreCompleto'] ?? '',
-      email: map['email'] ?? '',
-      zona: map['zona'] ?? '',
-      agencia: map['agencia'] ?? '',
-      fotoUrl: map['fotoUrl'] ?? '',
-      metaDiaria: (map['metaDiaria'] ?? 0).toDouble(),
-      metaMensual: (map['metaMensual'] ?? 0).toDouble(),
-    );
-  }
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'codigo_empleado': codigoEmpleado,
+    'nombres': nombres,
+    'apellidos': apellidos,
+    'agencia_id': agenciaId,
+    'agencia_nombre': agenciaNombre,
+    'perfil': perfil,
+    'token_fcm': tokenFcm,
+    'cod_asesor': codAsesor,
+  };
+
+  factory Oficial.fromJson(Map<String, dynamic> json) => Oficial(
+    id: json['id'] ?? '',
+    codigoEmpleado: json['codigo_empleado'] ?? '',
+    nombres: json['nombres'] ?? '',
+    apellidos: json['apellidos'] ?? '',
+    agenciaId: json['agencia_id']?.toString(),
+    agenciaNombre: json['agencia_nombre']?.toString(),
+    perfil: json['perfil'] ?? 'operador',
+    tokenFcm: json['token_fcm']?.toString(),
+    codAsesor: json['cod_asesor']?.toString(),
+  );
+
+  factory Oficial.fromUserMetadata(Map<String, dynamic> metadata) => Oficial(
+    id: metadata['id'] ?? '',
+    codigoEmpleado: metadata['codigo_empleado'] ?? '',
+    nombres: metadata['nombre'] ?? '',
+    apellidos: metadata['apellido'] ?? '',
+    agenciaId: metadata['agencia_id']?.toString(),
+    agenciaNombre: metadata['agencia_nombre']?.toString(),
+    perfil: metadata['rol'] ?? 'operador',
+  );
 }

@@ -117,14 +117,14 @@ class EstadoSolicitudesScreen extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _showSolicitudDetalle(context, s),
+          onTap: () => _showSolicitudDetalle(context, s, vm),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(s.clienteNombre, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
-                  Text('DNI: ${s.clienteDni} · ${s.tipoCredito}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
+                  Text(s.clienteNombre ?? '', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
+                  Text('DNI: ${s.clienteDni ?? ''} · ${s.tipoCredito ?? ''}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
                 ])),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -136,7 +136,7 @@ class EstadoSolicitudesScreen extends StatelessWidget {
               Row(children: [
                 _infoItem('Monto', 'S/ ${moneyFmt.format(s.montoSolicitado)}'),
                 _infoItem('Plazo', '${s.plazoMeses} meses'),
-                _infoItem('Cuota est.', s.cuotaEstimada > 0 ? 'S/ ${moneyFmt.format(s.cuotaEstimada)}' : '-'),
+                _infoItem('Cuota est.', (s.cuotaEstimada ?? 0) > 0 ? 'S/ ${moneyFmt.format(s.cuotaEstimada ?? 0)}' : '-'),
               ]),
               const SizedBox(height: 10),
               Row(children: [
@@ -154,10 +154,12 @@ class EstadoSolicitudesScreen extends StatelessWidget {
                 SizedBox(width: double.infinity, child: ElevatedButton.icon(
                   onPressed: () async {
                     final ok = await vm.transmitirSolicitud(s.id);
-                    if (context.mounted && ok) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Solicitud ${s.id} transmitida correctamente'),
-                        backgroundColor: EfectivaColors.verdeExito,
+                        content: Text(ok
+                            ? 'Solicitud ${s.id} transmitida correctamente'
+                            : 'Error al transmitir. Verifica tu conexión e intenta de nuevo.'),
+                        backgroundColor: ok ? EfectivaColors.verdeExito : EfectivaColors.rojoError,
                       ));
                     }
                   },
@@ -200,21 +202,29 @@ class EstadoSolicitudesScreen extends StatelessWidget {
     switch (e) {
       case EstadoSolicitud.borrador: return EfectivaColors.grisTexto;
       case EstadoSolicitud.enviado: return EfectivaColors.estadoEnviado;
+      case EstadoSolicitud.comite: return EfectivaColors.estadoEvaluacion;
       case EstadoSolicitud.enEvaluacion: return EfectivaColors.estadoEvaluacion;
       case EstadoSolicitud.aprobado: return EfectivaColors.estadoAprobado;
+      case EstadoSolicitud.condicionado: return EfectivaColors.naranjaAcento;
       case EstadoSolicitud.desembolsado: return EfectivaColors.estadoDesembolsado;
       case EstadoSolicitud.rechazado: return EfectivaColors.estadoRechazado;
     }
   }
 
-  void _showSolicitudDetalle(BuildContext context, SolicitudCredito s) {
+  Future<void> _showSolicitudDetalle(BuildContext context, SolicitudCredito s, SolicitudViewModel vm) async {
     final moneyFmt = NumberFormat('#,##0.00', 'es');
+    final bitacora = await vm.getBitacora(s.id);
+    List<Map<String, dynamic>>? cronograma;
+    if (s.estado == EstadoSolicitud.desembolsado) {
+      cronograma = await vm.getCronograma(s.id);
+    }
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
+        height: MediaQuery.of(context).size.height * 0.85,
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -234,30 +244,126 @@ class EstadoSolicitudesScreen extends StatelessWidget {
               child: Text(s.estadoTexto, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: _estadoColorFromEnum(s.estado))),
             ),
             const SizedBox(height: 20),
-            // Timeline de estados
             _buildTimeline(s),
             const SizedBox(height: 20),
+            if (s.estado == EstadoSolicitud.desembolsado && cronograma != null && cronograma.isNotEmpty) ...[
+              _buildCronogramaSection(cronograma, moneyFmt),
+              const SizedBox(height: 20),
+            ],
+            if (bitacora.isNotEmpty) ...[
+              _buildBitacoraSection(bitacora),
+              const SizedBox(height: 20),
+            ],
             _detalleSection('Datos del Cliente', [
-              _detalleRow('Nombre', s.clienteNombre),
-              _detalleRow('DNI', s.clienteDni),
+              _detalleRow('Nombre', s.clienteNombre ?? ''),
+              _detalleRow('DNI', s.clienteDni ?? ''),
             ]),
             _detalleSection('Datos del Préstamo', [
-              _detalleRow('Tipo', s.tipoCredito),
+              _detalleRow('Tipo', s.tipoCredito ?? ''),
               _detalleRow('Monto', 'S/ ${moneyFmt.format(s.montoSolicitado)}'),
-              _detalleRow('Plazo', '${s.plazoMeses} meses'),
-              _detalleRow('Destino', s.destinoCredito),
-              _detalleRow('Cuota estimada', 'S/ ${moneyFmt.format(s.cuotaEstimada)}'),
+              _detalleRow('Plazo', '${s.plazoMeses ?? 0} meses'),
+              _detalleRow('Destino', s.destinoCredito ?? ''),
+              _detalleRow('Cuota estimada', 'S/ ${moneyFmt.format(s.cuotaEstimada ?? 0)}'),
             ]),
             if (s.resultadoBuro != null)
               _detalleSection('Buró de Crédito', [
-                _detalleRow('Score', '${s.resultadoBuro!.puntaje}'),
-                _detalleRow('Riesgo', s.resultadoBuro!.scoreRiesgo),
-                _detalleRow('Resultado', s.resultadoBuro!.aprobado ? '✅ Aprobado' : '❌ No aprobado'),
+                _detalleRow('Score', '${s.resultadoBuro!.puntaje ?? ''}'),
+                _detalleRow('Riesgo', s.resultadoBuro!.scoreRiesgo ?? ''),
+                _detalleRow('Resultado', s.resultadoBuro!.aprobado == true ? 'Aprobado' : 'No aprobado'),
               ]),
           ])),
         ]),
       ),
     );
+  }
+
+  Widget _buildCronogramaSection(List<Map<String, dynamic>> cuotas, NumberFormat moneyFmt) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Cronograma de Pagos', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+      const SizedBox(height: 8),
+      Container(
+        decoration: BoxDecoration(color: EfectivaColors.grisFondo, borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.all(8),
+        child: Column(children: [
+          Row(children: [
+            _cronoHeader('N°', 30),
+            _cronoHeader('Fec.Vcto', 80),
+            _cronoHeader('Capital', 70, align: TextAlign.right),
+            _cronoHeader('Interés', 70, align: TextAlign.right),
+            _cronoHeader('Cuota', 70, align: TextAlign.right),
+            _cronoHeader('Saldo', 70, align: TextAlign.right),
+          ]),
+          const Divider(height: 12),
+          ...cuotas.asMap().entries.map((e) {
+            final i = e.key;
+            final c = e.value;
+            final capital = (c['capital'] as num?)?.toDouble() ?? 0;
+            final interes = (c['interes'] as num?)?.toDouble() ?? 0;
+            final cuota = (c['cuota'] as num?)?.toDouble() ?? 0;
+            final saldo = (c['saldo'] as num?)?.toDouble() ?? 0;
+            final vcto = c['fecha_vencimiento']?.toString() ?? '';
+            return Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
+              child: Row(children: [
+                _cronoCell('${i + 1}', 30),
+                _cronoCell(vcto.length >= 10 ? vcto.substring(0, 10) : vcto, 80),
+                _cronoCell('S/ ${moneyFmt.format(capital)}', 70, align: TextAlign.right),
+                _cronoCell('S/ ${moneyFmt.format(interes)}', 70, align: TextAlign.right),
+                _cronoCell('S/ ${moneyFmt.format(cuota)}', 70, align: TextAlign.right),
+                _cronoCell('S/ ${moneyFmt.format(saldo)}', 70, align: TextAlign.right),
+              ]),
+            );
+          }),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _cronoHeader(String label, double width, {TextAlign align = TextAlign.start}) {
+    return SizedBox(width: width, child: Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: EfectivaColors.grisTexto), textAlign: align));
+  }
+
+  Widget _cronoCell(String text, double width, {TextAlign align = TextAlign.start}) {
+    return SizedBox(width: width, child: Text(text, style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.negroTexto), textAlign: align));
+  }
+
+  Widget _buildBitacoraSection(List<Map<String, dynamic>> registros) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Bitácora', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+      const SizedBox(height: 8),
+      ...registros.asMap().entries.map((e) {
+        final i = e.key;
+        final r = e.value;
+        final isLast = i == registros.length - 1;
+        final estadoAnterior = r['estado_anterior']?.toString() ?? '';
+        final estadoNuevo = r['estado_nuevo']?.toString() ?? '';
+        final fecha = r['created_at']?.toString() ?? '';
+        final cambiadoPor = r['cambiado_por']?.toString() ?? '';
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Column(children: [
+            Container(width: 16, height: 16,
+              decoration: BoxDecoration(
+                color: EfectivaColors.azulPrincipal,
+                shape: BoxShape.circle),
+              child: const Icon(Icons.circle, size: 8, color: Colors.white),
+            ),
+            if (!isLast) Container(width: 2, height: 40, color: EfectivaColors.grisClaro),
+          ]),
+          const SizedBox(width: 12),
+          Expanded(child: Padding(padding: const EdgeInsets.only(bottom: 16), child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$estadoAnterior → $estadoNuevo', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
+              const SizedBox(height: 2),
+              if (cambiadoPor.isNotEmpty)
+                Text(cambiadoPor, style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisTexto)),
+              if (fecha.length >= 16)
+                Text(fecha.substring(0, 16).replaceAll('T', ' '), style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisSubtitulo)),
+            ],
+          ))),
+        ]);
+      }),
+    ]);
   }
 
   Widget _buildTimeline(SolicitudCredito s) {

@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
+import 'core/api/api_client.dart';
+import 'core/services/network_monitor.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/nueva_solicitud_screen.dart';
 import 'presentation/screens/captura_documentos_screen.dart';
 import 'presentation/screens/consulta_buro_screen.dart';
 import 'presentation/screens/transmision_screen.dart';
-import 'presentation/screens/ficha_cliente_screen.dart';
+import 'presentation/screens/ficha_cliente_nuevo_screen.dart';
 import 'presentation/viewmodels/auth_viewmodel.dart';
 import 'presentation/viewmodels/ventas_viewmodel.dart';
+import 'presentation/viewmodels/cartera_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Status bar transparente para diseño inmersivo
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -24,8 +27,18 @@ void main() async {
     ),
   );
 
-  // Inicializar formato de fechas en español
+  // Carga variables de entorno (.env)
+  await dotenv.load(fileName: '.env');
+
+  // Formatos de fecha en español
   await initializeDateFormatting('es', null);
+
+  // Inicializar el monitor de conectividad
+  await NetworkMonitor().initialize();
+
+  // El ApiClient se inicializa como singleton al primer uso.
+  // La URL base se lee desde .env (API_BASE_URL) o usa 10.0.2.2:8003.
+  ApiClient();
 
   runApp(const EfectivaVentasApp());
 }
@@ -39,11 +52,18 @@ class EfectivaVentasApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => CarteraViewModel()),
+        ChangeNotifierProvider(create: (_) => CarteraNuevoViewModel()),
         ChangeNotifierProvider(create: (_) => RutaViewModel()),
-        ChangeNotifierProvider(create: (_) => SolicitudViewModel()),
+        ChangeNotifierProxyProvider<AuthViewModel, SolicitudViewModel>(
+          create: (_) => SolicitudViewModel(),
+          update: (_, auth, prev) => SolicitudViewModel(
+            repository: prev?.repository,
+            authViewModel: auth,
+          ),
+        ),
       ],
       child: MaterialApp(
-        title: 'Efectiva - Fuerza de Ventas',
+        title: 'Efectiva — Fuerza de Ventas',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         initialRoute: '/',
@@ -54,7 +74,7 @@ class EfectivaVentasApp extends StatelessWidget {
           '/captura-documentos': (context) => const CapturaDocumentosScreen(),
           '/consulta-buro': (context) => const ConsultaBuroScreen(),
           '/transmision': (context) => const TransmisionScreen(),
-          '/ficha-cliente': (context) => const FichaClienteScreen(),
+          '/ficha-cliente': (context) => const FichaClienteNuevoScreen(),
         },
       ),
     );

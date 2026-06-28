@@ -13,7 +13,7 @@ class EstadoSolicitudesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<SolicitudViewModel>();
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Estado de Solicitudes'), automaticallyImplyLeading: false),
       body: Column(children: [
         // Filtros de estado

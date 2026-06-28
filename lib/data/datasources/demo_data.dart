@@ -31,6 +31,8 @@ class DemoData {
           ingresosEstimados: 3500,
           calificacionSbs: 'Normal',
           esProspecto: false,
+          lat: -11.9812,
+          lng: -77.0685,
         ),
         Cliente(
           id: 'CL-002',
@@ -45,6 +47,8 @@ class DemoData {
           ingresosEstimados: 2800,
           calificacionSbs: 'Normal',
           esProspecto: false,
+          lat: -11.9745,
+          lng: -77.0712,
         ),
         Cliente(
           id: 'CL-003',
@@ -59,6 +63,8 @@ class DemoData {
           ingresosEstimados: 4200,
           calificacionSbs: 'Normal',
           esProspecto: false,
+          lat: -11.9856,
+          lng: -77.0654,
         ),
         Cliente(
           id: 'CL-004',
@@ -73,6 +79,8 @@ class DemoData {
           ingresosEstimados: 3000,
           calificacionSbs: 'Normal',
           esProspecto: false,
+          lat: -11.9720,
+          lng: -77.0780,
         ),
         Cliente(
           id: 'CL-005',
@@ -102,6 +110,8 @@ class DemoData {
           ingresosEstimados: 3800,
           calificacionSbs: 'Normal',
           esProspecto: true,
+          lat: -11.9900,
+          lng: -77.0500,
         ),
         Cliente(
           id: 'CL-007',
@@ -116,6 +126,8 @@ class DemoData {
           ingresosEstimados: 2500,
           calificacionSbs: 'Normal',
           esProspecto: false,
+          lat: -11.9780,
+          lng: -77.0730,
         ),
       ];
 

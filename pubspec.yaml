@@ -72,6 +72,7 @@ flutter:
 
   assets:
     - .env
+    - assets/images/icono_efectiva.png
     - assets/images/logo_efectiva.png
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:signature/signature.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/location_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/solicitud_model.dart';
 import '../../../data/models/cartera_model.dart';
@@ -31,6 +34,13 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
     exportBackgroundColor: Colors.white,
   );
   bool _aceptaTerminos = false;
+
+  // Geocoding
+  bool _geocodificando = false;
+  bool _geoExitoso = false;
+  bool _geoFallido = false;
+  double? _latCaptura;
+  double? _lngCaptura;
 
   // Paso 1: Datos del solicitante
   final _nombresCtrl = TextEditingController();
@@ -100,7 +110,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Nueva Solicitud de Crédito'),
         bottom: PreferredSize(
@@ -256,7 +266,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
       _card(children: [
         _buildDropdown('Tipo de negocio', _tipoNegocio, _tiposNegocio, (v) => setState(() => _tipoNegocio = v!)),
         _field(_nombreNegocioCtrl, 'Nombre del negocio', Icons.store_outlined, validator: Validators.requerido),
-        _field(_direccionNegocioCtrl, 'Dirección del negocio', Icons.location_on_outlined, validator: Validators.requerido),
+        _direccionField(),
         Row(children: [
           Expanded(child: _field(_antiguedadAniosCtrl, 'Años', Icons.calendar_today, keyboard: TextInputType.number, validator: Validators.requerido)),
           const SizedBox(width: 10),
@@ -409,6 +419,34 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
         _resRow('Ingresos', 'S/ ${moneyFmt.format(double.tryParse(_ingresosCtrl.text) ?? 0)}'),
         _resRow('Destino', _destinoCtrl.text),
       ]),
+      if (_geoExitoso && _latCaptura != null && _lngCaptura != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity, height: 150,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
+          clipBehavior: Clip.antiAlias,
+          child: FlutterMap(
+            options: MapOptions(
+              initialCenter: LatLng(_latCaptura!, _lngCaptura!),
+              initialZoom: 16,
+              interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.efectiva.appventa',
+              ),
+              MarkerLayer(markers: [
+                Marker(
+                  point: LatLng(_latCaptura!, _lngCaptura!),
+                  width: 36, height: 36,
+                  child: const Icon(Icons.location_on, color: EfectivaColors.rojoError, size: 36),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      ],
       const SizedBox(height: 10),
       _resumenCard('Condiciones del Crédito', [
         _resRow('Monto', 'S/ ${moneyFmt.format(_montoSolicitado)}'),
@@ -439,7 +477,7 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
               child: Signature(
                 controller: _signatureController,
                 height: 120,
-                backgroundColor: EfectivaColors.grisFondo,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               ),
             ),
           ),
@@ -545,6 +583,85 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
     );
   }
 
+  Widget _direccionField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: _direccionNegocioCtrl,
+        keyboardType: TextInputType.text,
+        validator: Validators.requerido,
+        onChanged: (_) {
+          setState(() {
+            _geoExitoso = false;
+            _geoFallido = false;
+            _latCaptura = null;
+            _lngCaptura = null;
+          });
+        },
+        decoration: InputDecoration(
+          labelText: 'Dirección del negocio',
+          prefixIcon: const Icon(Icons.location_on_outlined, color: EfectivaColors.azulPrincipal, size: 20),
+          suffixIcon: _geocodificando
+              ? Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: EfectivaColors.azulCorporativo),
+                  ),
+                )
+              : _geoExitoso
+                  ? const Icon(Icons.check_circle, color: EfectivaColors.verdeExito, size: 22)
+                  : _geoFallido
+                      ? const Icon(Icons.gps_off, color: EfectivaColors.naranjaAcento, size: 22)
+                      : IconButton(
+                          icon: const Icon(Icons.search, color: EfectivaColors.azulCorporativo, size: 22),
+                          onPressed: _geocodificarDireccion,
+                          tooltip: 'Buscar en mapa',
+                        ),
+          counterText: '',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _geocodificarDireccion() async {
+    final dir = _direccionNegocioCtrl.text.trim();
+    if (dir.isEmpty) return;
+    setState(() {
+      _geocodificando = true;
+      _geoExitoso = false;
+      _geoFallido = false;
+    });
+    final result = await LocationService.addressToCoordinates(dir);
+    if (!mounted) return;
+    setState(() {
+      _geocodificando = false;
+      if (result.hasCoords) {
+        _latCaptura = result.lat;
+        _lngCaptura = result.lng;
+        _geoExitoso = true;
+        _geoFallido = false;
+      } else {
+        _geoExitoso = false;
+        _geoFallido = true;
+      }
+    });
+    if (!result.hasCoords && mounted) {
+      final fallback = await showDialog<_FallbackLocation>(
+        context: context,
+        builder: (_) => _MapaSeleccionDialog(dir: dir),
+      );
+      if (fallback != null && mounted) {
+        setState(() {
+          _latCaptura = fallback.lat;
+          _lngCaptura = fallback.lng;
+          _geoExitoso = true;
+          _geoFallido = false;
+        });
+      }
+    }
+  }
+
   Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -584,6 +701,8 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
 
     await Future.delayed(const Duration(milliseconds: 1000));
 
+    final dir = _direccionNegocioCtrl.text.trim();
+
     final oficial = context.read<AuthViewModel>().oficialActual;
     final solicitud = SolicitudCredito(
       id: 'SOL-${const Uuid().v4().substring(0, 6).toUpperCase()}',
@@ -600,8 +719,11 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
       tasaInteres: _teaReferencial,
       centroTrabajo: _nombreNegocioCtrl.text,
       cargoOcupacion: _tipoNegocio,
+      direccionNegocio: dir.isNotEmpty ? dir : null,
       ingresosEstimados: double.tryParse(_ingresosCtrl.text) ?? 0,
       gastosMensuales: double.tryParse(_gastosCtrl.text) ?? 0,
+      latCaptura: _latCaptura,
+      lngCaptura: _lngCaptura,
       estado: EstadoSolicitud.borrador,
       fechaCreacion: DateTime.now(),
     );
@@ -670,5 +792,107 @@ class _NuevaSolicitudScreenState extends State<NuevaSolicitudScreen> {
     _destinoCtrl.dispose();
     _signatureController.dispose();
     super.dispose();
+  }
+}
+
+class _FallbackLocation {
+  final double lat;
+  final double lng;
+  const _FallbackLocation(this.lat, this.lng);
+}
+
+class _MapaSeleccionDialog extends StatefulWidget {
+  final String dir;
+  const _MapaSeleccionDialog({required this.dir});
+  @override
+  State<_MapaSeleccionDialog> createState() => _MapaSeleccionDialogState();
+}
+
+class _MapaSeleccionDialogState extends State<_MapaSeleccionDialog> {
+  static const double _latDefault = -12.046374;
+  static const double _lngDefault = -77.042793;
+
+  late double _lat;
+  late double _lng;
+
+  @override
+  void initState() {
+    super.initState();
+    _lat = _latDefault;
+    _lng = _lngDefault;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(children: [
+              Expanded(child: Text(
+                'Selecciona la ubicación',
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto),
+              )),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'No se pudo geocodificar "${widget.dir}". Toca el mapa para colocar el pin.',
+              style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisSubtitulo),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 300,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: LatLng(_lat, _lng),
+                  initialZoom: 14,
+                  onTap: (_, latlng) => setState(() {
+                    _lat = latlng.latitude;
+                    _lng = latlng.longitude;
+                  }),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.efectiva.appventa',
+                  ),
+                  MarkerLayer(markers: [
+                    Marker(
+                      point: LatLng(_lat, _lng),
+                      width: 36, height: 36,
+                      child: const Icon(Icons.location_on, color: EfectivaColors.rojoError, size: 36),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.check, size: 18),
+                label: Text('Usar esta ubicación', style: GoogleFonts.inter()),
+                onPressed: () => Navigator.pop(context, _FallbackLocation(_lat, _lng)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

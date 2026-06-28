@@ -41,7 +41,7 @@ class _ConsultaBuroScreenState extends State<ConsultaBuroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Consulta de Buró')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

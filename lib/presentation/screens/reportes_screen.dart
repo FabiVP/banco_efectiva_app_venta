@@ -34,7 +34,7 @@ class _ReportesScreenState extends State<ReportesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Reportes', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
         backgroundColor: EfectivaColors.azulPrincipal,

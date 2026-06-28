@@ -16,7 +16,7 @@ class PerfilScreen extends StatelessWidget {
     final solicitudes = context.watch<SolicitudViewModel>();
 
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(slivers: [
         SliverAppBar(
           expandedHeight: 200, pinned: true, automaticallyImplyLeading: false,
@@ -47,34 +47,30 @@ class PerfilScreen extends StatelessWidget {
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(children: [
-            // Info del oficial
-            _card([
-              _row(Icons.email_outlined, 'Email', '${oficial?.codigoEmpleado ?? ''}@efectiva.pe'),
-              _row(Icons.location_on_outlined, 'Zona', '-'),
-              _row(Icons.business_outlined, 'Agencia', oficial?.agenciaNombre ?? oficial?.agenciaId ?? '-'),
+            _card(context, [
+              _row(context, Icons.email_outlined, 'Email', '${oficial?.codigoEmpleado ?? ''}@efectiva.pe'),
+              _row(context, Icons.location_on_outlined, 'Zona', '-'),
+              _row(context, Icons.business_outlined, 'Agencia', oficial?.agenciaNombre ?? oficial?.agenciaId ?? '-'),
             ]),
             const SizedBox(height: 16),
-            // Estadísticas
-            Text('Resumen del día', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+            Text('Resumen del día', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: _statCard('Solicitudes', '${solicitudes.totalSolicitudes}', Icons.description, EfectivaColors.azulPrincipal)),
+              Expanded(child: _statCard(context, 'Solicitudes', '${solicitudes.totalSolicitudes}', Icons.description, EfectivaColors.azulPrincipal)),
               const SizedBox(width: 10),
-              Expanded(child: _statCard('Pendientes', '${solicitudes.pendientesTransmision}', Icons.cloud_off, EfectivaColors.naranjaAcento)),
+              Expanded(child: _statCard(context, 'Pendientes', '${solicitudes.pendientesTransmision}', Icons.cloud_off, EfectivaColors.naranjaAcento)),
             ]),
             const SizedBox(height: 16),
-            // Opciones
-            _card([
-              _menuItem(Icons.sync, 'Sincronizar datos', () {}, EfectivaColors.verdeExito),
+            _card(context, [
+              _menuItem(context, Icons.sync, 'Sincronizar datos', () {}, EfectivaColors.verdeExito),
               const Divider(height: 1),
-              _menuItem(Icons.settings_outlined, 'Configuración', () {}, EfectivaColors.grisTexto),
+              _menuItem(context, Icons.settings_outlined, 'Configuración', () {}, EfectivaColors.textoSecundario),
               const Divider(height: 1),
-              _menuItem(Icons.help_outline, 'Soporte', () {}, EfectivaColors.azulPrincipal),
+              _menuItem(context, Icons.help_outline, 'Soporte', () {}, EfectivaColors.azulPrincipal),
               const Divider(height: 1),
-              _menuItem(Icons.info_outline, 'Acerca de', () => _showAcercaDe(context), EfectivaColors.grisTexto),
+              _menuItem(context, Icons.info_outline, 'Acerca de', () => _showAcercaDe(context), EfectivaColors.textoSecundario),
             ]),
             const SizedBox(height: 16),
-            // Cerrar sesión
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -94,11 +90,11 @@ class PerfilScreen extends StatelessWidget {
             if (auth.isDemoMode)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: EfectivaColors.amarilloClaro, borderRadius: BorderRadius.circular(8)),
-                child: Text('Modo demo activo', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: EfectivaColors.naranjaAcento)),
+                decoration: BoxDecoration(color: EfectivaColors.amberSuave, borderRadius: BorderRadius.circular(8)),
+                child: Text('Modo demo activo', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: EfectivaColors.amberExito)),
               ),
             const SizedBox(height: 8),
-            Text('v${AppStrings.version}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisSubtitulo)),
+            Text('v${AppStrings.version}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.textoSecundario)),
             const SizedBox(height: 40),
           ]),
         )),
@@ -106,27 +102,33 @@ class PerfilScreen extends StatelessWidget {
     );
   }
 
-  Widget _card(List<Widget> children) {
+  Widget _card(BuildContext ctx, List<Widget> children) {
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: EfectivaColors.fondoCard_(ctx),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
       child: Column(children: children),
     );
   }
 
-  Widget _row(IconData icon, String label, String value) {
+  Widget _row(BuildContext ctx, IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
         Icon(icon, size: 20, color: EfectivaColors.azulPrincipal),
         const SizedBox(width: 12),
-        Text(label, style: GoogleFonts.inter(fontSize: 13, color: EfectivaColors.grisTexto)),
+        Text(label, style: GoogleFonts.inter(fontSize: 13, color: EfectivaColors.textoSecundario_(ctx))),
         const Spacer(),
-        Flexible(child: Text(value, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto), textAlign: TextAlign.end)),
+        Flexible(child: Text(value,
+          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Theme.of(ctx).colorScheme.onSurface),
+          textAlign: TextAlign.end)),
       ]),
     );
   }
 
-  Widget _menuItem(IconData icon, String label, VoidCallback onTap, Color color) {
+  Widget _menuItem(BuildContext ctx, IconData icon, String label, VoidCallback onTap, Color color) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -136,23 +138,28 @@ class PerfilScreen extends StatelessWidget {
           child: Row(children: [
             Icon(icon, size: 20, color: color),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: EfectivaColors.negroTexto))),
-            const Icon(Icons.chevron_right, size: 18, color: EfectivaColors.grisSubtitulo),
+            Expanded(child: Text(label,
+              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Theme.of(ctx).colorScheme.onSurface))),
+            Icon(Icons.chevron_right, size: 18, color: EfectivaColors.textoSecundario_(ctx)),
           ]),
         ),
       ),
     );
   }
 
-  Widget _statCard(String label, String value, IconData icon, Color color) {
+  Widget _statCard(BuildContext ctx, String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: EfectivaColors.fondoCard_(ctx),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
       child: Column(children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 8),
         Text(value, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
-        Text(label, style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto)),
+        Text(label, style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.textoSecundario_(ctx))),
       ]),
     );
   }
@@ -174,9 +181,9 @@ class PerfilScreen extends StatelessWidget {
           Text('Efectiva', style: GoogleFonts.pacifico(fontSize: 24, color: EfectivaColors.azulPrincipal)),
           Text('Fuerza de Ventas', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: EfectivaColors.naranjaAcento)),
           const SizedBox(height: 8),
-          Text('v${AppStrings.version}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisSubtitulo)),
+          Text('v${AppStrings.version}', style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.textoSecundario)),
           const SizedBox(height: 12),
-          Text(AppStrings.copyright, style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisTexto), textAlign: TextAlign.center),
+          Text(AppStrings.copyright, style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.textoSecundario), textAlign: TextAlign.center),
         ]),
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar'))],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../data/models/cartera_model.dart';
 import '../../data/datasources/cartera_demo_data.dart';
@@ -19,7 +20,7 @@ class _CobranzaScreenState extends State<CobranzaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(children: [
         _buildHeader(),
         Expanded(child: _items.isEmpty
@@ -172,6 +173,42 @@ class _AccionCobranzaSheetState extends State<_AccionCobranzaSheet> {
   final _obsCtrl = TextEditingController();
   DateTime? _fechaCompromiso;
   bool _guardando = false;
+  double? _lat;
+  double? _lng;
+  bool _gpsCargando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _capturarGps();
+  }
+
+  Future<void> _capturarGps() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      if (mounted) {
+        setState(() {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+        _gpsCargando = false;
+      });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _gpsCargando = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _montoCtrl.dispose();
+    _obsCtrl.dispose();
+    super.dispose();
+  }
 
   final List<String> _tipos = ['Visita', 'Llamada', 'Mensaje'];
   final List<String> _resultados = ['Compromiso de pago', 'Pago parcial', 'Sin contacto', 'Se niega a pagar'];
@@ -267,10 +304,22 @@ class _AccionCobranzaSheetState extends State<_AccionCobranzaSheet> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: EfectivaColors.azulSuave, borderRadius: BorderRadius.circular(10)),
             child: Row(children: [
-              const Icon(Icons.gps_fixed, size: 14, color: EfectivaColors.azulPrincipal),
+              Icon(
+                _gpsCargando ? Icons.gps_not_fixed : (_lat != null ? Icons.gps_fixed : Icons.gps_off),
+                size: 14,
+                color: _gpsCargando ? EfectivaColors.grisSubtitulo : EfectivaColors.azulPrincipal,
+              ),
               const SizedBox(width: 8),
-              Text('GPS: -12.0000, -77.0000 · Registrado automáticamente',
-                style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.azulPrincipal)),
+              Expanded(
+                child: Text(
+                  _gpsCargando
+                      ? 'Capturando GPS...'
+                      : _lat != null
+                          ? 'GPS: ${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)} · Capturado'
+                          : 'GPS no disponible · Se usará ubicación por defecto',
+                  style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.azulPrincipal),
+                ),
+              ),
             ]),
           ),
           const SizedBox(height: 16),
@@ -300,11 +349,30 @@ class _AccionCobranzaSheetState extends State<_AccionCobranzaSheet> {
 
   Future<void> _guardar() async {
     setState(() => _guardando = true);
+    if (_lat == null && !_gpsCargando) {
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+        if (mounted) {
+          _lat = pos.latitude;
+          _lng = pos.longitude;
+        }
+      } catch (_) {}
+    }
     await Future.delayed(const Duration(milliseconds: 800));
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Gestión registrada con GPS y marca de tiempo', style: GoogleFonts.inter(color: Colors.white)),
+        content: Text(
+          _lat != null
+              ? 'Gestión registrada con GPS (${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)})'
+              : 'Gestión registrada',
+          style: GoogleFonts.inter(color: Colors.white),
+        ),
         backgroundColor: EfectivaColors.verdeExito,
         behavior: SnackBarBehavior.floating,
       ));

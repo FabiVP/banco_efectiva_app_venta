@@ -10,6 +10,11 @@ import '../viewmodels/ventas_viewmodel.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+  // Helper inline para no repetir Theme.of(context)
+  static Color _card(BuildContext ctx) => EfectivaColors.fondoCard_(ctx);
+  static Color _txt(BuildContext ctx) => EfectivaColors.textoPrimario_(ctx);
+  static Color _sub(BuildContext ctx) => EfectivaColors.textoSecundario_(ctx);
+
   @override
   Widget build(BuildContext context) {
     final oficial = context.watch<AuthViewModel>().oficialActual;
@@ -19,7 +24,7 @@ class DashboardScreen extends StatelessWidget {
     final hoy = DateFormat('EEEE d MMMM', 'es').format(DateTime.now());
 
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -28,6 +33,7 @@ class DashboardScreen extends StatelessWidget {
             automaticallyImplyLeading: false,
             backgroundColor: EfectivaColors.azulPrincipal,
             flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.none,
               background: Container(
                 decoration: const BoxDecoration(gradient: EfectivaColors.gradientePrincipal),
                 child: SafeArea(
@@ -37,17 +43,15 @@ class DashboardScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          Container(
-                            width: 48, height: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white38, width: 2),
-                            ),
-                            child: Center(child: Text(
-                              oficial?.nombreCompleto.split(' ').take(2).map((e) => e[0]).join('') ?? 'OF',
-                              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
-                            )),
+                          Image.asset(
+                            'assets/images/logo_efectiva.png',
+                            width: 130,
+                            height: 44,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            isAntiAlias: true,
+                            color: Colors.white,
+                            colorBlendMode: BlendMode.srcIn,
                           ),
                           const SizedBox(width: 12),
                           Expanded(child: Column(
@@ -99,17 +103,17 @@ class DashboardScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _buildKPISection(ruta, solicitudes, cartera),
+                _buildKPISection(context, ruta, solicitudes, cartera),
                 const SizedBox(height: 20),
                 _buildProgresoRuta(ruta),
                 const SizedBox(height: 20),
-                Text('Acciones rápidas', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+                Text('Acciones rápidas', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: _txt(context))),
                 const SizedBox(height: 12),
                 _buildAccionesRapidas(context),
                 const SizedBox(height: 20),
-                _buildProximaVisita(ruta),
+                _buildProximaVisita(context, ruta),
                 const SizedBox(height: 20),
-                _buildClientesRenovacion(cartera),
+                _buildClientesRenovacion(context, cartera),
                 const SizedBox(height: 100),
               ]),
             ),
@@ -119,27 +123,27 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildKPISection(RutaViewModel ruta, SolicitudViewModel sol, CarteraViewModel cart) {
+  Widget _buildKPISection(BuildContext context, RutaViewModel ruta, SolicitudViewModel sol, CarteraViewModel cart) {
     return Row(children: [
-      Expanded(child: _kpi('Visitas', '${ruta.visitasCompletadas}/${ruta.totalVisitas}', Icons.route_outlined, EfectivaColors.azulPrincipal)),
+      Expanded(child: _kpi(context, 'Visitas', '${ruta.visitasCompletadas}/${ruta.totalVisitas}', Icons.route_outlined, EfectivaColors.azulPrincipal)),
       const SizedBox(width: 10),
-      Expanded(child: _kpi('Solicitudes', '${sol.totalSolicitudes}', Icons.description_outlined, EfectivaColors.naranjaAcento)),
+      Expanded(child: _kpi(context, 'Solicitudes', '${sol.totalSolicitudes}', Icons.description_outlined, EfectivaColors.naranjaAcento)),
       const SizedBox(width: 10),
-      Expanded(child: _kpi('Renovaciones', '${cart.clientes.length}', Icons.autorenew, EfectivaColors.verdeExito)),
+      Expanded(child: _kpi(context, 'Renovaciones', '${cart.clientes.length}', Icons.autorenew, EfectivaColors.verdeExito)),
     ]);
   }
 
-  Widget _kpi(String label, String value, IconData icon, Color color) {
+  Widget _kpi(BuildContext context, String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(color: _card(context), borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))]),
       child: Column(children: [
         Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 20)),
         const SizedBox(height: 8),
-        Text(value, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: EfectivaColors.negroTexto)),
-        Text(label, style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisTexto, fontWeight: FontWeight.w500)),
+        Text(value, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: _txt(context))),
+        Text(label, style: GoogleFonts.inter(fontSize: 11, color: _sub(context), fontWeight: FontWeight.w500)),
       ]),
     );
   }
@@ -176,18 +180,18 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _accion(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
     return GestureDetector(onTap: onTap, child: Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(color: _card(context), borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))]),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: color, size: 22)),
         const SizedBox(height: 8),
-        Text(label, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto, height: 1.2)),
+        Text(label, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: _txt(context), height: 1.2)),
       ]),
     ));
   }
 
-  Widget _buildProximaVisita(RutaViewModel ruta) {
+  Widget _buildProximaVisita(BuildContext context, RutaViewModel ruta) {
     final proxima = ruta.visitas.where((v) => !v.completada).toList();
     if (proxima.isEmpty) {
       return Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: EfectivaColors.verdeSuave, borderRadius: BorderRadius.circular(16)),
@@ -199,25 +203,25 @@ class DashboardScreen extends StatelessWidget {
     }
     final v = proxima.first;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Próxima visita', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+      Text('Próxima visita', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: _txt(context))),
       const SizedBox(height: 10),
       Container(padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+        decoration: BoxDecoration(color: _card(context), borderRadius: BorderRadius.circular(16),
           border: Border.all(color: EfectivaColors.naranjaAcento.withValues(alpha: 0.3))),
         child: Row(children: [
           Container(width: 48, height: 48, decoration: BoxDecoration(gradient: EfectivaColors.gradienteNaranja, borderRadius: BorderRadius.circular(12)),
             child: Center(child: Text('${v.orden}', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)))),
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(v.clienteNombre, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
+            Text(v.clienteNombre, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: _txt(context))),
             const SizedBox(height: 2),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: EfectivaColors.verdeExito.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
               child: Text(v.motivo, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: EfectivaColors.verdeExito))),
             const SizedBox(height: 4),
             Row(children: [
-              const Icon(Icons.location_on_outlined, size: 14, color: EfectivaColors.grisSubtitulo),
+              const Icon(Icons.location_on_outlined, size: 14, color: EfectivaColors.textoSecundario),
               const SizedBox(width: 4),
-              Expanded(child: Text(v.direccion, style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.grisTexto), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(child: Text(v.direccion, style: GoogleFonts.inter(fontSize: 12, color: _sub(context)), maxLines: 1, overflow: TextOverflow.ellipsis)),
             ]),
           ])),
           const Icon(Icons.navigation_outlined, color: EfectivaColors.azulPrincipal, size: 22),
@@ -226,22 +230,23 @@ class DashboardScreen extends StatelessWidget {
     ]);
   }
 
-  Widget _buildClientesRenovacion(CarteraViewModel cartera) {
+  Widget _buildClientesRenovacion(BuildContext context, CarteraViewModel cartera) {
     final ren = cartera.clientes.take(3).toList();
     if (ren.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Clientes con renovación', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: EfectivaColors.negroTexto)),
+      Text('Clientes con renovación', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: _txt(context))),
       const SizedBox(height: 10),
       ...ren.map((c) => Container(
         margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: _card(context), borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
         child: Row(children: [
           Container(width: 42, height: 42, decoration: BoxDecoration(color: EfectivaColors.azulSuave, borderRadius: BorderRadius.circular(12)),
             child: Center(child: Text(c.iniciales, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: EfectivaColors.azulPrincipal)))),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(c.nombreCompleto, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: EfectivaColors.negroTexto)),
-            Text('DNI: ${c.numeroDocumento} · Calf: ${c.calificacionSbs ?? 'N'}', style: GoogleFonts.inter(fontSize: 11, color: EfectivaColors.grisTexto)),
+            Text(c.nombreCompleto, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: _txt(context))),
+            Text('DNI: ${c.numeroDocumento} · Calf: ${c.calificacionSbs ?? 'N'}', style: GoogleFonts.inter(fontSize: 11, color: _sub(context))),
           ])),
           Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: EfectivaColors.verdeSuave, borderRadius: BorderRadius.circular(8)),
             child: Text('S/ ${NumberFormat('#,##0', 'es').format(c.ingresosEstimados ?? 0)}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: EfectivaColors.verdeExito))),

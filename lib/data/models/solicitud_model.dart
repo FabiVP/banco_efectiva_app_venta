@@ -34,6 +34,7 @@ class SolicitudCredito {
   final DateTime? fechaAprobacion;
   final DateTime? fechaDesembolso;
 
+  final String? direccionNegocio;
   final String? tipoNegocio;
   final String? nombreNegocio;
   final String? actividadEconomica;
@@ -88,6 +89,7 @@ class SolicitudCredito {
     this.fechaEvaluacion,
     this.fechaAprobacion,
     this.fechaDesembolso,
+    this.direccionNegocio,
     this.tipoNegocio,
     this.nombreNegocio,
     this.actividadEconomica,
@@ -165,6 +167,7 @@ class SolicitudCredito {
     'apellidos': apellidos ?? clienteNombre?.split(' ').skip(1).join(' ') ?? '',
     'telefono': null,
     if (agenciaId != null) 'agencia_id': agenciaId,
+    if (direccionNegocio != null) 'direccion_negocio': direccionNegocio,
     if (tipoNegocio != null) 'tipo_negocio': tipoNegocio,
     if (nombreNegocio != null) 'nombre_negocio': nombreNegocio,
     if (actividadEconomica != null) 'actividad_economica': actividadEconomica,
@@ -213,6 +216,7 @@ class SolicitudCredito {
     fechaEvaluacion: json['fecha_evaluacion'] != null ? DateTime.tryParse(json['fecha_evaluacion']) : null,
     fechaAprobacion: json['fecha_aprobacion'] != null ? DateTime.tryParse(json['fecha_aprobacion']) : null,
     fechaDesembolso: json['fecha_desembolso'] != null ? DateTime.tryParse(json['fecha_desembolso']) : null,
+    direccionNegocio: json['direccion_negocio']?.toString(),
     tipoNegocio: json['tipo_negocio']?.toString(),
     nombreNegocio: json['nombre_negocio']?.toString(),
     actividadEconomica: json['actividad_economica']?.toString(),
@@ -278,6 +282,7 @@ class SolicitudCredito {
     DateTime? fechaEvaluacion,
     DateTime? fechaAprobacion,
     DateTime? fechaDesembolso,
+    String? direccionNegocio,
     String? tipoNegocio,
     String? nombreNegocio,
     String? actividadEconomica,
@@ -328,6 +333,7 @@ class SolicitudCredito {
       fechaEvaluacion: fechaEvaluacion ?? this.fechaEvaluacion,
       fechaAprobacion: fechaAprobacion ?? this.fechaAprobacion,
       fechaDesembolso: fechaDesembolso ?? this.fechaDesembolso,
+      direccionNegocio: direccionNegocio ?? this.direccionNegocio,
       tipoNegocio: tipoNegocio ?? this.tipoNegocio,
       nombreNegocio: nombreNegocio ?? this.nombreNegocio,
       actividadEconomica: actividadEconomica ?? this.actividadEconomica,

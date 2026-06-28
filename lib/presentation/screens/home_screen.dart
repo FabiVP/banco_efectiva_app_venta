@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final vm = context.watch<CarteraNuevoViewModel>();
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         size: 22,
                         color: isSelected
                             ? (tab.index == 2 ? EfectivaColors.naranjaAcento : EfectivaColors.azulPrincipal)
-                            : EfectivaColors.grisSubtitulo,
+                            : EfectivaColors.textoSecundario_(context),
                       ),
                       if (tab.index == 1 && vm.alertasNoLeidas > 0)
                         Positioned(right: -2, top: -2, child: Container(
@@ -130,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                       color: isSelected
                           ? (tab.index == 2 ? EfectivaColors.naranjaAcento : EfectivaColors.azulPrincipal)
-                          : EfectivaColors.grisSubtitulo,
+                          : EfectivaColors.textoSecundario_(context),
                     )),
                   ]),
                 ),
@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final esAdmin = perfil == 'administrador';
 
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: Column(children: [
         // Cabecera
         Container(
@@ -185,43 +185,43 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(child: ListView(padding: const EdgeInsets.symmetric(vertical: 8), children: [
           // ─ Operador (siempre visible) ─────────────────────────────────────
           if (esOperador) ...[
-            _drawerTitulo('CAMPO'),
-            _drawerItem(Icons.dashboard_outlined, 'Dashboard', () { setState(() => _currentIndex = 0); Navigator.pop(context); }),
-            _drawerItem(Icons.folder_copy_outlined, 'Cartera del día', () { setState(() => _currentIndex = 1); Navigator.pop(context); },
+            _drawerTitulo(context, 'CAMPO'),
+            _drawerItem(context, Icons.dashboard_outlined, 'Dashboard', () { setState(() => _currentIndex = 0); Navigator.pop(context); }),
+            _drawerItem(context, Icons.folder_copy_outlined, 'Cartera del día', () { setState(() => _currentIndex = 1); Navigator.pop(context); },
               badge: vm.alertasNoLeidas > 0 ? vm.alertasNoLeidas : null),
-            _drawerItem(Icons.map_outlined, 'Planificación de ruta', () { setState(() => _currentIndex = 2); Navigator.pop(context); }),
-            _drawerItem(Icons.person_search_outlined, 'Pre-evaluación / Campañas',
+            _drawerItem(context, Icons.map_outlined, 'Planificación de ruta', () { setState(() => _currentIndex = 2); Navigator.pop(context); }),
+            _drawerItem(context, Icons.person_search_outlined, 'Pre-evaluación / Campañas',
               () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const PreEvaluacionScreen())); }),
-            _drawerItem(Icons.description_outlined, 'Nueva solicitud',
+            _drawerItem(context, Icons.description_outlined, 'Nueva solicitud',
               () { Navigator.pop(context); Navigator.pushNamed(context, '/nueva-solicitud'); }),
-            _drawerItem(Icons.camera_alt_outlined, 'Captura de documentos',
+            _drawerItem(context, Icons.camera_alt_outlined, 'Captura de documentos',
               () { Navigator.pop(context); Navigator.pushNamed(context, '/captura-documentos'); }),
-            _drawerItem(Icons.verified_user_outlined, 'Consulta de buró',
+            _drawerItem(context, Icons.verified_user_outlined, 'Consulta de buró',
               () { Navigator.pop(context); Navigator.pushNamed(context, '/consulta-buro'); }),
-            _drawerItem(Icons.send_outlined, 'Transmisión electrónica',
+            _drawerItem(context, Icons.send_outlined, 'Transmisión electrónica',
               () { Navigator.pop(context); Navigator.pushNamed(context, '/transmision'); }),
-            _drawerItem(Icons.fact_check_outlined, 'Estado de solicitudes',
+            _drawerItem(context, Icons.fact_check_outlined, 'Estado de solicitudes',
               () { setState(() => _currentIndex = 3); Navigator.pop(context); }),
-            _drawerItem(Icons.calculate_outlined, 'Simulador de crédito',
+            _drawerItem(context, Icons.calculate_outlined, 'Simulador de crédito',
               () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SimuladorCreditoScreen())); }),
-            _drawerItem(Icons.warning_amber_outlined, 'Cobranza / Mora',
+            _drawerItem(context, Icons.warning_amber_outlined, 'Cobranza / Mora',
               () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const CobranzaScreen())); }),
           ],
           // ─ Supervisor + ────────────────────────────────────────────────────
           if (esSupervisor) ...[
             const Divider(height: 20, indent: 20, endIndent: 20),
-            _drawerTitulo('SUPERVISIÓN'),
-            _drawerItem(Icons.analytics_outlined, 'Reportes y productividad',
+            _drawerTitulo(context, 'SUPERVISIÓN'),
+            _drawerItem(context, Icons.analytics_outlined, 'Reportes y productividad',
               () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportesScreen())); }),
-            _drawerItem(Icons.radar_outlined, 'Monitor en tiempo real',
+            _drawerItem(context, Icons.radar_outlined, 'Monitor en tiempo real',
               () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportesScreen())); }),
           ],
           // ─ Admin ───────────────────────────────────────────────────────────
           if (esAdmin) ...[
             const Divider(height: 20, indent: 20, endIndent: 20),
-            _drawerTitulo('ADMINISTRACIÓN'),
-            _drawerItem(Icons.manage_accounts_outlined, 'Gestión de usuarios', () { Navigator.pop(context); }),
-            _drawerItem(Icons.settings_outlined, 'Configuración', () { Navigator.pop(context); }),
+            _drawerTitulo(context, 'ADMINISTRACIÓN'),
+            _drawerItem(context, Icons.manage_accounts_outlined, 'Gestión de usuarios', () { Navigator.pop(context); }),
+            _drawerItem(context, Icons.settings_outlined, 'Configuración', () { Navigator.pop(context); }),
           ],
           const Divider(height: 20, indent: 20, endIndent: 20),
           // ─ Modo offline toggle ─────────────────────────────────────────────
@@ -307,12 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
   }
 
-  Widget _drawerTitulo(String titulo) => Padding(
+  Widget _drawerTitulo(BuildContext ctx, String titulo) => Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-    child: Text(titulo, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: EfectivaColors.grisSubtitulo, letterSpacing: 1.2)),
+    child: Text(titulo, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: EfectivaColors.textoSecundario_(ctx), letterSpacing: 1.2)),
   );
 
-  Widget _drawerItem(IconData icon, String label, VoidCallback onTap, {int? badge}) => ListTile(
+  Widget _drawerItem(BuildContext ctx, IconData icon, String label, VoidCallback onTap, {int? badge}) => ListTile(
     dense: true,
     leading: Stack(clipBehavior: Clip.none, children: [
       Icon(icon, color: EfectivaColors.azulPrincipal, size: 22),
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Center(child: Text('$badge', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white))),
         )),
     ]),
-    title: Text(label, style: GoogleFonts.inter(fontSize: 14, color: EfectivaColors.negroTexto)),
+    title: Text(label, style: GoogleFonts.inter(fontSize: 14, color: Theme.of(ctx).colorScheme.onSurface)),
     onTap: onTap,
   );
 

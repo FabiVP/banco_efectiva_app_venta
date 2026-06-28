@@ -63,7 +63,7 @@ class _CapturaDocumentosScreenState extends State<CapturaDocumentosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Captura de Documentos'),
         actions: [

@@ -77,7 +77,7 @@ class _TransmisionScreenState extends State<TransmisionScreen> {
     final progresoGlobal = total > 0 ? _completados / total : 0.0;
 
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Transmisión Electrónica')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

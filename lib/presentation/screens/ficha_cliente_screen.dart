@@ -19,7 +19,7 @@ class _FichaClienteScreenState extends State<FichaClienteScreen> {
     final cliente = ModalRoute.of(context)!.settings.arguments as Cliente;
     final moneyFmt = NumberFormat('#,##0.00', 'es');
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(slivers: [
         SliverAppBar(
           expandedHeight: 220, pinned: true,

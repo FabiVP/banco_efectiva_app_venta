@@ -20,12 +20,14 @@ import 'presentation/viewmodels/cartera_viewmodel.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ),
-  );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFF0F172A),
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
 
   // Carga variables de entorno (.env)
   await dotenv.load(fileName: '.env');
@@ -66,6 +68,8 @@ class EfectivaVentasApp extends StatelessWidget {
         title: 'Efectiva — Fuerza de Ventas',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.dark,
         initialRoute: '/',
         routes: {
           '/': (context) => const LoginScreen(),

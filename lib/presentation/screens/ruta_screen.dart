@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/location_service.dart';
+import '../../../data/datasources/remote/cartera_remote_datasource.dart';
 import '../viewmodels/ventas_viewmodel.dart';
 
 class RutaScreen extends StatefulWidget {
@@ -16,12 +20,14 @@ class RutaScreen extends StatefulWidget {
 
 class _RutaScreenState extends State<RutaScreen> {
   bool _vistaMapa = false;
+  final MapController _mapController = MapController();
+  bool _cargandoGPS = false;
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<RutaViewModel>();
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Plan de Ruta'),
         automaticallyImplyLeading: false,
@@ -34,6 +40,18 @@ class _RutaScreenState extends State<RutaScreen> {
         ],
       ),
       body: Column(children: [
+        // Banner modo demo
+        if (vm.errorMsg != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: EfectivaColors.naranjaAcento.withValues(alpha: 0.15),
+            child: Row(children: [
+              const Icon(Icons.info_outline, size: 16, color: EfectivaColors.naranjaAcento),
+              const SizedBox(width: 8),
+              Expanded(child: Text(vm.errorMsg!, style: GoogleFonts.inter(fontSize: 12, color: EfectivaColors.naranjaAcento, fontWeight: FontWeight.w500))),
+            ]),
+          ),
         _buildProgresoCard(vm),
         if (_vistaMapa) ...[
           Expanded(child: _buildMap(vm)),
@@ -129,50 +147,200 @@ class _RutaScreenState extends State<RutaScreen> {
       );
     }).toList();
 
-    return FlutterMap(
-      options: MapOptions(initialCenter: center, initialZoom: 13),
+    return Stack(
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.efectiva.app_venta',
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(initialCenter: center, initialZoom: 14),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.efectiva.ventas.efectiva_app_venta',
+              subdomains: const ['a', 'b', 'c'],
+            ),
+            MarkerLayer(markers: markers),
+          ],
         ),
-        MarkerLayer(markers: markers),
+        // Botón GPS
+        Positioned(
+          bottom: 16, right: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'fab_gps',
+            backgroundColor: EfectivaColors.azulPrincipal,
+            onPressed: _centrarEnUbicacion,
+            child: _cargandoGPS
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.my_location, color: Colors.white, size: 20),
+          ),
+        ),
       ],
     );
   }
 
+  Future<void> _centrarEnUbicacion() async {
+    setState(() => _cargandoGPS = true);
+    final result = await LocationService.getCurrentPosition();
+    setState(() => _cargandoGPS = false);
+
+    if (!result.hasCoords) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result.error ?? 'No se pudo obtener ubicación',
+              style: GoogleFonts.inter()),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: EfectivaColors.rojoError,
+        ));
+      }
+      return;
+    }
+
+    // Centrar mapa en posición real del asesor
+    _mapController.move(LatLng(result.lat!, result.lng!), 15);
+
+    // Mostrar automáticamente la próxima visita pendiente
+    final vm = context.read<RutaViewModel>();
+    final pendientes = vm.visitas.where((v) => !v.completada).toList();
+
+    if (!mounted) return;
+
+    if (pendientes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text('¡Todas las visitas completadas!', style: GoogleFonts.inter(color: Colors.white)),
+        ]),
+        backgroundColor: EfectivaColors.verdeExito,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+    // Abrir info de la próxima visita automáticamente
+    final proxima = pendientes.first;
+    _mostrarInfoVisita(vm, proxima.id);
+  }
+
+
   void _mostrarInfoVisita(RutaViewModel vm, String visitaId) {
     final v = vm.visitas.firstWhere((x) => x.id == visitaId);
+
+    // Centrar mapa en el marcador del cliente seleccionado
+    _mapController.move(LatLng(v.latitud, v.longitud), 16);
+
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(v.clienteNombre, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Row(children: [Icon(Icons.location_on_outlined, size: 14, color: EfectivaColors.grisTexto),
-            const SizedBox(width: 4), Text(v.direccion, style: GoogleFonts.inter(fontSize: 13, color: EfectivaColors.grisTexto))]),
-          const SizedBox(height: 4),
-          Row(children: [Icon(Icons.label_outline, size: 14, color: _motivoColor(v.motivo)),
-            const SizedBox(width: 4), Text(v.motivo, style: GoogleFonts.inter(fontSize: 13, color: _motivoColor(v.motivo)))]),
+          // Handle bar
+          Center(child: Container(width: 40, height: 4,
+            decoration: BoxDecoration(color: EfectivaColors.grisClaro, borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 16),
+          // Encabezado con orden
+          Row(children: [
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                gradient: v.completada ? null : EfectivaColors.gradienteNaranja,
+                color: v.completada ? EfectivaColors.verdeExito : null,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(child: v.completada
+                  ? const Icon(Icons.check, color: Colors.white, size: 20)
+                  : Text('${v.orden}', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(v.clienteNombre, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface)),
+              Text('DNI: ${v.clienteDni}', style: GoogleFonts.inter(fontSize: 12,
+                  color: EfectivaColors.textoSecundario_(context))),
+            ])),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: _motivoColor(v.motivo).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8)),
+              child: Text(v.motivo, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
+                  color: _motivoColor(v.motivo))),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          // Dirección
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: EfectivaColors.fondoCard_(context),
+              borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              const Icon(Icons.location_on_outlined, size: 18, color: EfectivaColors.azulPrincipal),
+              const SizedBox(width: 8),
+              Expanded(child: Text(v.direccion, style: GoogleFonts.inter(fontSize: 13,
+                  color: EfectivaColors.textoSecundario_(context)))),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          // Botón principal: Navegar con Google Maps
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              icon: const Icon(Icons.navigation, size: 18),
-              label: Text('Navegar a este cliente', style: GoogleFonts.inter(fontSize: 14)),
+              icon: const Icon(Icons.navigation_outlined, size: 20),
+              label: Text('Abrir navegación', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600)),
               style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: EfectivaColors.azulPrincipal,
+                minimumSize: const Size(0, 52),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(ctx);
-                // RF-19: Abrir navegación externa (o integración)
+                final uri = Uri.parse(
+                  'https://www.google.com/maps/dir/?api=1&destination=${v.latitud},${v.longitud}&travelmode=driving',
+                );
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('No se pudo abrir Google Maps', style: GoogleFonts.inter()),
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
               },
             ),
           ),
           const SizedBox(height: 8),
+          // Botón secundario: iniciar o finalizar visita
+          if (!v.completada)
+            SizedBox(
+              width: double.infinity,
+              child: v.horaInicio == null
+                  ? OutlinedButton.icon(
+                      icon: const Icon(Icons.play_arrow_rounded, size: 20, color: EfectivaColors.azulPrincipal),
+                      label: Text('Iniciar visita', style: GoogleFonts.inter(fontSize: 14,
+                          fontWeight: FontWeight.w600, color: EfectivaColors.azulPrincipal)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: EfectivaColors.azulPrincipal),
+                        minimumSize: const Size(0, 48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () { Navigator.pop(ctx); vm.iniciarVisita(v.id); },
+                    )
+                  : OutlinedButton.icon(
+                      icon: const Icon(Icons.check_circle_outline, size: 20, color: EfectivaColors.verdeExito),
+                      label: Text('Finalizar visita', style: GoogleFonts.inter(fontSize: 14,
+                          fontWeight: FontWeight.w600, color: EfectivaColors.verdeExito)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: EfectivaColors.verdeExito),
+                        minimumSize: const Size(0, 48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () { Navigator.pop(ctx); _showFinalizarDialog(context, vm, v.id); },
+                    ),
+            ),
         ]),
       ),
     );
@@ -237,7 +405,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white, borderRadius: BorderRadius.circular(16),
+                  color: EfectivaColors.fondoCard_(context), borderRadius: BorderRadius.circular(16),
                   border: v.completada ? null : (v.horaInicio != null
                       ? Border.all(color: EfectivaColors.naranjaAcento.withValues(alpha: 0.4), width: 1.5) : null),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
@@ -245,7 +413,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Expanded(child: Text(v.clienteNombre, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600,
-                        color: v.completada ? EfectivaColors.grisTexto : EfectivaColors.negroTexto))),
+                        color: v.completada ? EfectivaColors.textoSecundario_(context) : EfectivaColors.textoPrimario_(context)))),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(color: _motivoColor(v.motivo).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
@@ -347,9 +515,25 @@ class _RutaScreenState extends State<RutaScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
-            onPressed: () {
-              vm.finalizarVisita(visitaId, obsController.text.isEmpty ? null : obsController.text);
+            onPressed: () async {
               Navigator.pop(ctx);
+              // 1. Actualizar UI inmediatamente
+              vm.finalizarVisita(visitaId, obsController.text.isEmpty ? null : obsController.text);
+              // 2. Persistir al backend con GPS
+              try {
+                final gps = await LocationService.getPositionWithFallback();
+                final remote = CarteraRemoteDataSource();
+                await remote.actualizarResultadoVisita(
+                  visitaId,
+                  estadoVisita: 'visitado',
+                  resultado: 'visitado',
+                  observacion: obsController.text,
+                  lat: gps.lat,
+                  lng: gps.lng,
+                );
+              } catch (e) {
+                debugPrint('[Ruta] error al persistir visita: $e');
+              }
             },
             child: const Text('Finalizar'),
           ),

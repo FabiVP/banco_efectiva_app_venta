@@ -33,7 +33,7 @@ class _SimuladorCreditoScreenState extends State<SimuladorCreditoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Simulador de Crédito', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
         backgroundColor: EfectivaColors.azulPrincipal,

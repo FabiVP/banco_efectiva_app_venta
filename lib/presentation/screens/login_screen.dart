@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -55,102 +55,96 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: size.height - MediaQuery.of(context).padding.top,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    FadeTransition(
-                      opacity: _fadeIn,
-                      child: _buildLogo(),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(24, 0, 24, 20 + bottomInset),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                FadeTransition(
+                  opacity: _fadeIn,
+                  child: _buildLogo(),
+                ),
+                const SizedBox(height: 24),
+                SlideTransition(
+                  position: _slideUp,
+                  child: FadeTransition(
+                    opacity: _fadeIn,
+                    child: _buildFormCard(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Botón modo demo
+                FadeTransition(
+                  opacity: _fadeIn,
+                  child: Container(
+                    width: double.infinity,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white38),
                     ),
-                    const SizedBox(height: 40),
-                    SlideTransition(
-                      position: _slideUp,
-                      child: FadeTransition(
-                        opacity: _fadeIn,
-                        child: _buildFormCard(),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Botón modo demo
-                    FadeTransition(
-                      opacity: _fadeIn,
-                      child: Container(
-                        width: double.infinity,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white30),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: _handleDemoLogin,
-                            child: Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.play_circle_outline_rounded,
-                                    color: Colors.white70,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Ingresar en modo demo',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                ],
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: _handleDemoLogin,
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.play_circle_outline_rounded,
+                                color: Colors.white,
+                                size: 20,
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Ingresar en modo demo',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // Credenciales demo hint
-                    FadeTransition(
-                      opacity: _fadeIn,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline,
-                                color: Colors.white54, size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Prueba: EF2024-0145 / demo123456',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: Colors.white60,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                // Credenciales demo hint
+                FadeTransition(
+                  opacity: _fadeIn,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white38),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            color: Colors.white70, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Prueba: EF2024-0145 / demo123456',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -178,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ],
               ),
               child: ClipOval(
-                child: Image.asset('assets/images/logo_efectiva.png',
+                child: Image.asset('assets/images/icono_efectiva.png',
                   width: 100, height: 100, fit: BoxFit.cover),
               ),
             ),
@@ -330,25 +324,33 @@ class _LoginScreenState extends State<LoginScreen>
             const SizedBox(height: 12),
             Row(
               children: [
-                SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: Checkbox(
-                    value: _recordarUsuario,
-                    onChanged: (v) =>
-                        setState(() => _recordarUsuario = v ?? false),
-                    activeColor: EfectivaColors.azulPrincipal,
-                    shape: RoundedRectangleBorder(
+                GestureDetector(
+                  onTap: () => setState(() => _recordarUsuario = !_recordarUsuario),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: _recordarUsuario ? EfectivaColors.azulPrincipal : Colors.transparent,
                       borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: _recordarUsuario ? EfectivaColors.azulPrincipal : EfectivaColors.grisMedio,
+                        width: 1.5,
+                      ),
                     ),
+                    child: _recordarUsuario
+                        ? const Icon(Icons.check, size: 16, color: Colors.white)
+                        : null,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  AppStrings.recordarme,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: EfectivaColors.grisTexto,
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => setState(() => _recordarUsuario = !_recordarUsuario),
+                  child: Text(
+                    AppStrings.recordarme,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: EfectivaColors.grisTexto,
+                    ),
                   ),
                 ),
               ],

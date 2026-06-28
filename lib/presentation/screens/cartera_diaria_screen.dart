@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../data/models/cartera_model.dart';
 import '../viewmodels/cartera_viewmodel.dart';
@@ -26,7 +27,7 @@ class _CarteraNuevoScreenState extends State<CarteraNuevoScreen> {
   Widget build(BuildContext context) {
     final vm = context.watch<CarteraNuevoViewModel>();
     return Scaffold(
-      backgroundColor: EfectivaColors.grisFondo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(children: [
         _buildHeader(vm),
         if (vm.modoOffline) _buildOfflineBanner(vm),
@@ -462,12 +463,28 @@ class _ResultadoVisitaSheetState extends State<_ResultadoVisitaSheet> {
 
   Future<void> _confirmar() async {
     setState(() => _enviando = true);
+
+    double? lat;
+    double? lng;
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      lat = pos.latitude;
+      lng = pos.longitude;
+    } catch (_) {
+      // Si falla el GPS, se envía null y el backend/repositorio usa valor por defecto
+    }
+
     await widget.vm.registrarResultadoVisita(
       itemId: widget.item.id,
       estadoVisita: _resultadoSeleccionado!,
       observacion: _obsCtrl.text.isNotEmpty ? _obsCtrl.text : null,
-      lat: -12.0,
-      lng: -77.0,
+      lat: lat,
+      lng: lng,
     );
     if (mounted) Navigator.pop(context);
   }

@@ -47,9 +47,9 @@ class CarteraRemoteDataSource {
         ApiEndpoints.carteraVisita(carteraId),
         {
           'resultado': resultado ?? estadoVisita,
-          'observacion': ?observacion,
-          'lat': ?lat,
-          'lng': ?lng,
+          'observacion': observacion ?? '',
+          if (lat != null) 'lat': lat,
+          if (lng != null) 'lng': lng,
         },
       );
     } catch (e) {

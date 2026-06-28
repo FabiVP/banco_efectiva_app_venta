@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/services/geo_service.dart';
 import '../../../data/models/cliente_model.dart';
 import '../../../data/models/solicitud_model.dart';
 import '../../../data/models/visita_model.dart';
 import '../../../data/datasources/demo_data.dart';
+import '../../../data/datasources/remote/cartera_remote_datasource.dart';
 import '../../../data/repositories/solicitud_repository.dart';
 import 'auth_viewmodel.dart';
 
@@ -71,23 +73,113 @@ class CarteraViewModel extends ChangeNotifier {
 class RutaViewModel extends ChangeNotifier {
   List<VisitaPlanificada> _visitas = [];
   bool _cargando = false;
+  String? _errorMsg;
 
   List<VisitaPlanificada> get visitas => _visitas;
   bool get cargando => _cargando;
+  String? get errorMsg => _errorMsg;
 
   int get visitasCompletadas => _visitas.where((v) => v.completada).length;
   int get totalVisitas => _visitas.length;
   double get porcentajeAvance =>
       totalVisitas > 0 ? visitasCompletadas / totalVisitas : 0;
 
-  Future<void> cargarRuta() async {
+  // Coordenadas por defecto — Lima centro
+  static const double _latDefault = -12.0464;
+  static const double _lngDefault = -77.0428;
+
+  Future<void> cargarRuta({DateTime? fecha}) async {
     _cargando = true;
+    _errorMsg = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    _visitas = DemoData.visitasDemo;
+    try {
+      final remote = CarteraRemoteDataSource();
+      final items = await remote.getCarteraDiaria(fecha: fecha);
+
+      if (items.isEmpty) {
+        _visitas = DemoData.visitasDemo;
+        _errorMsg = 'Sin visitas asignadas hoy (modo demo)';
+      } else {
+        // Geocodificar clientes sin coords antes de construir visitas
+        _visitas = await _mapearCarteraConGeo(items);
+      }
+    } catch (e) {
+      debugPrint('[RutaViewModel] error al cargar cartera: $e');
+      _visitas = DemoData.visitasDemo;
+      _errorMsg = 'Sin conexión — mostrando datos demo';
+    }
+
     _cargando = false;
     notifyListeners();
+  }
+
+  /// Mapea CarteraItemOut → VisitaPlanificada.
+  /// Si un cliente no tiene lat/lng en BD, geocodifica su dirección texto.
+  Future<List<VisitaPlanificada>> _mapearCarteraConGeo(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final visitas = <VisitaPlanificada>[];
+
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      final motivo = _tipoGestionAMotivo(item['tipo_gestion'] as String? ?? '');
+      final direccion = item['direccion'] as String? ?? '';
+
+      // Intentar coords del backend primero
+      double lat = (item['lat'] as num?)?.toDouble() ?? 0;
+      double lng = (item['lng'] as num?)?.toDouble() ?? 0;
+
+      // Si no hay coords válidas → geocodificar la dirección
+      if (lat == 0 && lng == 0 && direccion.isNotEmpty) {
+        debugPrint('[RutaViewModel] Geocodificando: $direccion');
+        final coords = await GeoService.addressToCoordinates(
+          '$direccion, Lima, Peru',
+        );
+        if (coords != null) {
+          lat = coords.$1;
+          lng = coords.$2;
+          debugPrint('[RutaViewModel] Geocodificado → ($lat, $lng)');
+        } else {
+          // Fallback: Lima centro
+          lat = _latDefault;
+          lng = _lngDefault;
+          debugPrint('[RutaViewModel] Sin coords para: $direccion → usando Lima centro');
+        }
+      } else if (lat == 0 && lng == 0) {
+        lat = _latDefault;
+        lng = _lngDefault;
+      }
+
+      visitas.add(VisitaPlanificada(
+        id: item['id'] as String,
+        clienteId: item['cliente_id'] as String,
+        clienteNombre: item['cliente_nombre'] as String? ?? 'Cliente',
+        clienteDni: item['documento'] as String? ?? '',
+        direccion: direccion.isEmpty ? 'Sin dirección registrada' : direccion,
+        latitud: lat,
+        longitud: lng,
+        motivo: motivo,
+        orden: (item['orden_manual'] as int? ?? i) + 1,
+        completada: (item['estado_visita'] as String?) == 'visitado',
+        fechaPlanificada: DateTime.now(),
+      ));
+    }
+
+    visitas.sort((a, b) => a.orden.compareTo(b.orden));
+    return visitas;
+  }
+
+  String _tipoGestionAMotivo(String tipo) {
+    switch (tipo.toUpperCase()) {
+      case 'RENOVACION':         return 'Renovación';
+      case 'AMPLIACION':         return 'Ampliación';
+      case 'NUEVA_SOLICITUD':    return 'Nueva Solicitud';
+      case 'RECUPERACION_MORA':  return 'Cobranza';
+      case 'SEGUIMIENTO':        return 'Seguimiento';
+      case 'PROSPECCION':        return 'Prospección';
+      default:                   return tipo;
+    }
   }
 
   void iniciarVisita(String visitaId) {
